@@ -4,7 +4,7 @@ An intelligent water tracking application that helps you stay hydrated throughou
 
 ## 🚀 Live Demo
 
-🔗 **[View Live Application](#)** _(Link will be updated after Vercel deployment)_
+🔗 **[View Live Application](https://smartsip-water-tracker.vercel.app)**
 
 ## 📋 Features
 

@@ -5,7 +5,7 @@ from datetime import datetime
 from urllib.parse import urlparse, parse_qs
 
 try:
-    from langchain_openai import ChatOpenAI
+    from langchain_groq import ChatGroq
     from langchain_core.messages import HumanMessage
     LANGCHAIN_AVAILABLE = True
 except ImportError:
@@ -19,12 +19,12 @@ def get_ai_feedback(current_intake, goal):
     if not LANGCHAIN_AVAILABLE:
         return "💧 AI features require LangChain. Install dependencies."
     
-    api_key = os.getenv("OPENAI_API_KEY")
+    api_key = os.getenv("GROQ_API_KEY")
     if not api_key:
-        return "⚠️ OpenAI API key missing. Add OPENAI_API_KEY to environment variables."
+        return "⚠️ OpenAI API key missing. Add GROQ_API_KEY to environment variables."
     
     try:
-        llm = ChatOpenAI(model_name="gpt-3.5-turbo", temperature=0.7)
+        llm = ChatGroq(model_name="mixtral-8x7b-32768", temperature=0.7)
         prompt = (
             f"You are a hydration assistant. The user has consumed {current_intake}ml today. "
             f"Their goal is {goal}ml. Provide status and suggestions. Keep it short with emojis."

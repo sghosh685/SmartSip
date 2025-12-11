@@ -8,7 +8,7 @@ import {
 
 // --- CONFIGURATION ---
 // Updated to port 8001 to match your backend
-const API_URL = "http://127.0.0.1:8001"; 
+const API_URL = "/api"; 
 const USER_ID = "alex_johnson_user"; 
 
 // --- SHARED UTILS ---

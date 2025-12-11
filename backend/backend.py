@@ -7,7 +7,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
-from langchain_openai import ChatOpenAI
+from langchain_groq import ChatGroq
 # UPDATED IMPORT: This is the fix for the new LangChain version
 from langchain_core.messages import HumanMessage
 
@@ -95,12 +95,12 @@ init_db()
 # --- AI AGENT LAYER ---
 def get_ai_feedback(current_intake: int, goal: int):
     """Uses LangChain to generate feedback."""
-    api_key = os.getenv("OPENAI_API_KEY")
+    api_key = os.getenv("GROQ_API_KEY")
     if not api_key:
         return "⚠️ AI Key missing. Please check backend .env file."
 
     try:
-        llm = ChatOpenAI(model_name="gpt-3.5-turbo", temperature=0.7)
+        llm = ChatGroq(model_name="llama-3.1-8b-instant", temperature=0.7)
         
         prompt = (
             f"You are a hydration assistant. The user has consumed {current_intake}ml of water today. "

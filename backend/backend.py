@@ -481,3 +481,4 @@ def get_stats(user_id: str, days: int = 30, goal: int = 2500, db: Session = Depe
         "month_total": month_total
     }
 
+    

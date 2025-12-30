@@ -2582,7 +2582,7 @@ export default function App() {
 
   useEffect(() => {
     fetchStats();
-  }, [logs, goal]); // Re-fetch when logs or goal change
+  }, [logs, goal, USER_ID]); // Re-fetch when logs, goal, or user changes
 
   // Dynamic userName with ability to override in Settings
   const defaultUserName = userContext.isGuest

@@ -1,0 +1,24 @@
+# SmartSip Backend Deployment
+
+# Render.com Blueprint Configuration
+# This file tells Render how to deploy the backend
+
+services:
+  - type: web
+    name: smartsip-api
+    env: python
+    region: oregon  # or frankfurt, singapore - pick closest to users
+    plan: free      # Free tier (750 hours/month)
+    buildCommand: |
+      cd backend && pip install -r requirements.txt
+    startCommand: |
+      cd backend && uvicorn backend:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        sync: false  # You'll set this manually in Render dashboard
+      - key: GROQ_API_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        value: "https://smartsip.vercel.app"  # Update with your actual Vercel URL
+    healthCheckPath: /
+    autoDeploy: true  # Auto-deploy on git push

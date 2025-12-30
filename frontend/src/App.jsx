@@ -2524,10 +2524,19 @@ export default function App() {
     fetchStats();
   }, [logs, goal]); // Re-fetch when logs or goal change
 
-  // Dynamic userName based on auth state
-  const userName = userContext.isGuest
+  // Dynamic userName with ability to override in Settings
+  const defaultUserName = userContext.isGuest
     ? "Guest User"
     : (userContext.email?.split('@')[0] || "User");
+  const [userName, setUserName] = useState(defaultUserName);
+
+  // Sync userName when auth state changes
+  useEffect(() => {
+    if (!userContext.isGuest && userContext.email) {
+      setUserName(userContext.email.split('@')[0]);
+    }
+  }, [userContext.isGuest, userContext.email]);
+
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [smartAlerts, setSmartAlerts] = useState(true);
   const [alertFrequency, setAlertFrequency] = useState(2);

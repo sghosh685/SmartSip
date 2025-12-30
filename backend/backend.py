@@ -199,40 +199,47 @@ def db_get_snapshots(db: Session, user_id: str, days: int = 365):
 # Actually, it calls db_get_snapshots internally. We must update it.
 
 def db_get_streak_from_snapshots(db: Session, user_id: str):
-    """Calculate streak from LOCKED snapshots only."""
+    """
+    Calculate streak from daily snapshots.
+    
+    A streak is the number of consecutive days (ending today or yesterday) 
+    where the user met their daily goal.
+    
+    Logic:
+    1. Snapshots are sorted by date DESC (newest first)
+    2. We check if TODAY or YESTERDAY starts a streak (allowing for "day not over" scenario)
+    3. Then count consecutive goal_met=True days backwards
+    """
     snapshots = db_get_snapshots(db, user_id, 365)
     
     if not snapshots:
         return 0
     
-    streak = 0
-    today = datetime.now().date()
-    expected_date = today
+    # Build a dict for O(1) lookup: date_str -> goal_met
+    snap_dict = {snap["date"]: snap["goal_met"] for snap in snapshots}
     
-    for snap in snapshots:
-        try:
-            snap_date = datetime.strptime(snap["date"], "%Y-%m-%d").date()
-        except ValueError:
-            continue # Skip malformed dates
-
-        # Logic remains identical to before...
-        if snap_date == today:
-            expected_date = today - timedelta(days=1)
-            if snap["goal_met"]:
-                streak += 1
-            continue
-            
-        if expected_date == today:
-            expected_date = today - timedelta(days=1)
-        
-        if snap_date != expected_date:
-            break
-            
-        if snap["goal_met"]:
+    today = datetime.now().date()
+    yesterday = today - timedelta(days=1)
+    
+    # Determine starting point: today if goal met, or yesterday if today's goal not met yet
+    # (User might still be working on today's goal)
+    if snap_dict.get(today.strftime("%Y-%m-%d"), False):
+        check_date = today
+    elif snap_dict.get(yesterday.strftime("%Y-%m-%d"), False):
+        check_date = yesterday
+    else:
+        # Neither today nor yesterday has goal met - no active streak
+        return 0
+    
+    # Count consecutive days with goal_met = True
+    streak = 0
+    for i in range(365):
+        date_str = check_date.strftime("%Y-%m-%d")
+        if snap_dict.get(date_str, False):
             streak += 1
-            expected_date = snap_date - timedelta(days=1)
+            check_date = check_date - timedelta(days=1)
         else:
-            break 
+            break
     
     return streak
 

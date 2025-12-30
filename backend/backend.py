@@ -216,7 +216,15 @@ def db_get_streak_from_snapshots(db: Session, user_id: str):
         return 0
     
     # Build a dict for O(1) lookup: date_str -> goal_met
-    snap_dict = {snap["date"]: snap["goal_met"] for snap in snapshots}
+    # If duplicates exist, prefer goal_met=True (DB inconsistency handling)
+    snap_dict = {}
+    for snap in snapshots:
+        date = snap["date"]
+        if date not in snap_dict:
+            snap_dict[date] = snap["goal_met"]
+        elif snap["goal_met"]:
+            # Prefer goal_met=True if duplicate exists
+            snap_dict[date] = True
     
     today = datetime.now().date()
     yesterday = today - timedelta(days=1)

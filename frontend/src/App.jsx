@@ -1892,7 +1892,8 @@ const SettingsScreen = ({
   setDailyConditions,
   goalData,
   onRequestPermission,
-  onTestNotification
+  onTestNotification,
+  userEmail  // NEW: Display email in settings
 }) => {
   const [editingProfile, setEditingProfile] = useState(false);
   const [tempName, setTempName] = useState(userName);
@@ -1985,7 +1986,12 @@ const SettingsScreen = ({
             ) : (
               <h3 className="text-lg font-bold text-gray-800">{userName}</h3>
             )}
-            <p className="text-xs text-gray-500">Hydration Champion 💧</p>
+            {userEmail ? (
+              <p className="text-xs text-blue-500 font-medium">{userEmail}</p>
+            ) : (
+              <p className="text-xs text-gray-500">Guest Mode</p>
+            )}
+            <p className="text-xs text-gray-400">Hydration Champion 💧</p>
           </div>
           <button
             onClick={() => editingProfile ? handleSaveProfile() : setEditingProfile(true)}
@@ -2610,14 +2616,26 @@ export default function App() {
   }, [logs, goal, USER_ID, auth.loading]); // Re-fetch when logs, goal, or user changes
 
   // Dynamic userName with ability to override in Settings
-  const defaultUserName = userContext.isGuest
-    ? "Guest User"
-    : (userContext.email?.split('@')[0] || "User");
-  const [userName, setUserName] = useState(defaultUserName);
+  // Load from localStorage if saved, otherwise use email-based default
+  const getDefaultUserName = () => {
+    const saved = localStorage.getItem('customUserName');
+    if (saved) return saved;
+    return userContext.isGuest
+      ? "Guest User"
+      : (userContext.email?.split('@')[0] || "User");
+  };
+  const [userName, setUserName] = useState(getDefaultUserName);
 
-  // Sync userName when auth state changes
+  // Wrapper to persist userName changes to localStorage
+  const handleSetUserName = (name) => {
+    setUserName(name);
+    localStorage.setItem('customUserName', name);
+  };
+
+  // Only update userName from auth if user hasn't set a custom name
   useEffect(() => {
-    if (!userContext.isGuest && userContext.email) {
+    const savedName = localStorage.getItem('customUserName');
+    if (!savedName && !userContext.isGuest && userContext.email) {
       setUserName(userContext.email.split('@')[0]);
     }
   }, [userContext.isGuest, userContext.email]);
@@ -3138,7 +3156,7 @@ export default function App() {
                 drinkAmount={drinkAmount}
                 setDrinkAmount={setDrinkAmount}
                 userName={userName}
-                setUserName={setUserName}
+                setUserName={handleSetUserName}
                 isDarkMode={isDarkMode}
                 setIsDarkMode={setIsDarkMode}
                 smartAlerts={smartAlerts}
@@ -3158,6 +3176,7 @@ export default function App() {
                 goalData={goalData}
                 onRequestPermission={requestPermission}
                 onTestNotification={sendTestNotification}
+                userEmail={userContext.email}
               />
             )}
           </div>

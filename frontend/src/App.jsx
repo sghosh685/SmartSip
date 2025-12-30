@@ -2581,8 +2581,11 @@ export default function App() {
   };
 
   useEffect(() => {
-    fetchStats();
-  }, [logs, goal, USER_ID]); // Re-fetch when logs, goal, or user changes
+    // Don't fetch until auth is done loading to ensure correct USER_ID
+    if (!auth.loading) {
+      fetchStats();
+    }
+  }, [logs, goal, USER_ID, auth.loading]); // Re-fetch when logs, goal, or user changes
 
   // Dynamic userName with ability to override in Settings
   const defaultUserName = userContext.isGuest
@@ -2797,13 +2800,17 @@ export default function App() {
 
   // 1. Initial Data Fetch
   useEffect(() => {
-    fetchHistory();
-  }, []);
+    if (!auth.loading) {
+      fetchHistory();
+    }
+  }, [auth.loading]);
 
   // Refetch when selected date changes
   useEffect(() => {
-    fetchDataForDate(selectedDate);
-  }, [selectedDate]);
+    if (!auth.loading) {
+      fetchDataForDate(selectedDate);
+    }
+  }, [selectedDate, auth.loading]);
 
   // NEW: Sync effective goal to backend when conditions change
   // This ensures that if you raise your goal (e.g. Hot Weather), the backend

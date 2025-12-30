@@ -528,12 +528,11 @@ def ai_feedback(user_id: str, goal: int, db: Session = Depends(get_db)):
 def get_stats(user_id: str, days: int = 30, goal: int = 2500, db: Session = Depends(get_db)):
     daily_data = db_get_stats(db, user_id, days)
     
-    # Migration/Cleanup step
+    # Migration/Cleanup step - backfill any missing snapshots
     db_backfill_snapshots(db, user_id, goal)
     
+    # Use ONLY the new streak logic (no fallback to old buggy version)
     streak = db_get_streak_from_snapshots(db, user_id)
-    if streak == 0:
-        streak = db_get_streak(db, user_id, goal)
     
     week_data = daily_data[:7]
     week_total = sum(d["total"] for d in week_data)
@@ -550,4 +549,16 @@ def get_stats(user_id: str, days: int = 30, goal: int = 2500, db: Session = Depe
         "month_total": month_total
     }
 
-    
+# DEBUG endpoint - remove in production
+@app.get("/debug/snapshots/{user_id}")
+def debug_snapshots(user_id: str, db: Session = Depends(get_db)):
+    """View daily snapshots for debugging streak issues."""
+    snapshots = db_get_snapshots(db, user_id, 30)
+    today = datetime.now()
+    return {
+        "server_time_utc": today.isoformat(),
+        "server_date_utc": today.strftime("%Y-%m-%d"),
+        "user_id": user_id,
+        "snapshots": snapshots,
+        "snapshot_count": len(snapshots)
+    }

@@ -2458,6 +2458,29 @@ export default function App() {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
 
   // --- HANDLERS ---
+  // Notification handlers
+  const requestPermission = async () => {
+    if (!('Notification' in window)) {
+      alert('This browser does not support desktop notification');
+      return;
+    }
+    const permission = await Notification.requestPermission();
+    if (permission === 'granted') {
+      new Notification('SmartSip Notifications Enabled! 💧');
+    }
+  };
+
+  const sendTestNotification = () => {
+    if (Notification.permission === 'granted') {
+      new Notification('Test Notification', {
+        body: 'This is how your hydration reminders will look!',
+        icon: '/pwa-192x192.png'
+      });
+    } else {
+      requestPermission();
+    }
+  };
+
   const handleLogin = async () => {
     // Use real Supabase OAuth
     const { error } = await auth.signInWithGoogle();

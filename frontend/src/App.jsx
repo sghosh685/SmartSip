@@ -2520,13 +2520,35 @@ export default function App() {
           const result = await response.json();
           console.log(`Migration complete: ${result.imported} logs imported`);
           localStorage.setItem(migrationKey, 'true');
-
-          // Refresh stats after migration
-          fetchStats();
         }
       } catch (e) {
         console.error('Guest data migration failed:', e);
       }
+
+      // ALSO claim any database guest records (separate from localStorage)
+      try {
+        const claimResponse = await fetch(`${API_URL}/claim-guest-data`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_id: auth.userId,
+            goal: goal
+          })
+        });
+
+        if (claimResponse.ok) {
+          const claimResult = await claimResponse.json();
+          if (claimResult.logs_transferred > 0) {
+            console.log(`Claimed ${claimResult.logs_transferred} guest logs from database`);
+          }
+        }
+      } catch (e) {
+        console.error('Guest data claim failed:', e);
+      }
+
+      // Refresh all data after migration/claim
+      fetchStats();
+      fetchHistory();
     };
 
     migrateGuestData();

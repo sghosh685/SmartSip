@@ -425,6 +425,76 @@ def bulk_import(req: BulkImportRequest, db: Session = Depends(get_db)):
         "dates_updated": list(dates_to_update)
     }
 
+class ClaimGuestDataRequest(BaseModel):
+    user_id: str  # The authenticated user ID to claim data for
+    goal: int
+
+@app.post("/claim-guest-data")
+def claim_guest_data(req: ClaimGuestDataRequest, db: Session = Depends(get_db)):
+    """
+    Transfer all 'guest-local-user' database records to an authenticated user.
+    This is called after OAuth login to claim any guest data that was stored in the DB.
+    """
+    GUEST_USER_ID = "guest-local-user"
+    
+    if req.user_id == GUEST_USER_ID:
+        return {"status": "error", "message": "Cannot claim guest data to guest account"}
+    
+    # Ensure user exists
+    get_or_create_user(db, req.user_id)
+    
+    # 1. Transfer water_intake records
+    guest_logs = db.query(models.WaterIntake).filter(
+        models.WaterIntake.user_id == GUEST_USER_ID
+    ).all()
+    
+    transferred_logs = 0
+    dates_affected = set()
+    
+    for log in guest_logs:
+        # Change ownership to authenticated user
+        log.user_id = req.user_id
+        transferred_logs += 1
+        dates_affected.add(log.timestamp.strftime("%Y-%m-%d"))
+    
+    # 2. Transfer daily_snapshots (or recreate them)
+    guest_snapshots = db.query(models.DailySnapshot).filter(
+        models.DailySnapshot.user_id == GUEST_USER_ID
+    ).all()
+    
+    transferred_snapshots = 0
+    for snap in guest_snapshots:
+        # Check if user already has a snapshot for this date
+        existing = db.query(models.DailySnapshot).filter(
+            models.DailySnapshot.user_id == req.user_id,
+            models.DailySnapshot.date == snap.date
+        ).first()
+        
+        if existing:
+            # Merge: add totals, update goal_met
+            existing.total_intake += snap.total_intake
+            existing.goal_met = existing.total_intake >= existing.goal_for_day
+            existing.updated_at = datetime.now()
+            # Delete the guest snapshot
+            db.delete(snap)
+        else:
+            # Transfer ownership
+            snap.user_id = req.user_id
+            transferred_snapshots += 1
+    
+    db.commit()
+    
+    # Recreate snapshots for affected dates (to ensure accuracy)
+    for date_str in dates_affected:
+        db_create_or_update_snapshot(db, req.user_id, date_str, req.goal)
+    
+    return {
+        "status": "success",
+        "logs_transferred": transferred_logs,
+        "snapshots_transferred": transferred_snapshots,
+        "dates_affected": list(dates_affected)
+    }
+
 @app.post("/log")
 def log_intake(req: LogRequest, db: Session = Depends(get_db)):
     # 1. Log to DB

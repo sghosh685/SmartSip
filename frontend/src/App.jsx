@@ -938,7 +938,7 @@ const AlarmScreen = ({ totalWater, goal, logs }) => {
 };
 
 // --- SCREEN 3: STATS ---
-const StatsScreen = ({ logs, goal, isDarkMode, unlockedBadges = [] }) => {
+const StatsScreen = ({ logs, goal, isDarkMode, unlockedBadges = [], userId }) => {
   const [viewMode, setViewMode] = useState('Week');
   const [statsData, setStatsData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -972,7 +972,7 @@ const StatsScreen = ({ logs, goal, isDarkMode, unlockedBadges = [] }) => {
         'calendar': 365, 'Month': 30, 'Year': 365
       };
       const days = daysMap[viewMode] || 7;
-      const response = await fetch(`${API_URL}/stats/${USER_ID}?days=${days}&goal=${goal}`);
+      const response = await fetch(`${API_URL}/stats/${userId}?days=${days}&goal=${goal}`);
       if (response.ok) {
         const data = await response.json();
         setStatsData(data);
@@ -985,7 +985,7 @@ const StatsScreen = ({ logs, goal, isDarkMode, unlockedBadges = [] }) => {
 
   useEffect(() => {
     fetchStats();
-  }, [viewMode]);
+  }, [viewMode, userId]);
 
   // Generate week data for LAST 7 DAYS ending at today (chronological order)
   const getWeekData = () => {
@@ -3040,7 +3040,7 @@ export default function App() {
                 onCloudSync={() => setIsLoginModalOpen(true)}
               />
             )}
-            {activeTab === 'stats' && <StatsScreen logs={logs} goal={goal} effectiveGoal={effectiveGoal} isDarkMode={isDarkMode} unlockedBadges={unlockedBadges} />}
+            {activeTab === 'stats' && <StatsScreen logs={logs} goal={goal} effectiveGoal={effectiveGoal} isDarkMode={isDarkMode} unlockedBadges={unlockedBadges} userId={USER_ID} />}
             {activeTab === 'alarm' && <AlarmScreen totalWater={totalWater} goal={goal} effectiveGoal={effectiveGoal} logs={logs} />}
             {activeTab === 'settings' && (
               <SettingsScreen

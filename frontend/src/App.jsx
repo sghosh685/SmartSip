@@ -2472,6 +2472,66 @@ export default function App() {
     }
   };
 
+  // --- GUEST DATA MIGRATION ---
+  // When user logs in, migrate their localStorage data to the backend
+  useEffect(() => {
+    const migrateGuestData = async () => {
+      // Only run if user just authenticated (has real ID, not guest)
+      if (!auth.userId || auth.isGuest) return;
+
+      // Check if we've already migrated
+      const migrationKey = `migrated_to_${auth.userId}`;
+      if (localStorage.getItem(migrationKey)) return;
+
+      // Get logs from localStorage
+      const savedLogs = localStorage.getItem('waterLogs');
+      if (!savedLogs) {
+        localStorage.setItem(migrationKey, 'true');
+        return;
+      }
+
+      try {
+        const logs = JSON.parse(savedLogs);
+        if (!Array.isArray(logs) || logs.length === 0) {
+          localStorage.setItem(migrationKey, 'true');
+          return;
+        }
+
+        // Format logs for bulk import
+        const formattedLogs = logs.map(log => ({
+          amount: log.amount,
+          timestamp: log.time || log.timestamp || new Date().toISOString()
+        }));
+
+        console.log(`Migrating ${formattedLogs.length} guest logs to user ${auth.userId}`);
+
+        // Send to backend
+        const response = await fetch(`${API_URL}/bulk-import`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_id: auth.userId,
+            logs: formattedLogs,
+            goal: goal
+          })
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          console.log(`Migration complete: ${result.imported} logs imported`);
+          localStorage.setItem(migrationKey, 'true');
+
+          // Refresh stats after migration
+          fetchStats();
+        }
+      } catch (e) {
+        console.error('Guest data migration failed:', e);
+      }
+    };
+
+    migrateGuestData();
+  }, [auth.userId, auth.isGuest]);
+
   const [totalWater, setTotalWater] = useState(0);
   const [logs, setLogs] = useState([]);
   const [aiMessage, setAiMessage] = useState("");

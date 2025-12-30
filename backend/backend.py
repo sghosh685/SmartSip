@@ -351,10 +351,72 @@ class LogRequest(BaseModel):
     goal: int
     date: Optional[str] = None
 
+class BulkLogEntry(BaseModel):
+    amount: int
+    timestamp: str  # ISO format datetime string
+    
+class BulkImportRequest(BaseModel):
+    user_id: str
+    logs: List[BulkLogEntry]
+    goal: int
+
 # --- API ROUTES ---
 @app.get("/")
 def read_root():
     return {"status": "SmartSip Backend Running"}
+
+@app.post("/bulk-import")
+def bulk_import(req: BulkImportRequest, db: Session = Depends(get_db)):
+    """
+    Bulk import water logs from localStorage guest data.
+    Used when a user authenticates to migrate their offline data.
+    """
+    if not req.logs:
+        return {"status": "success", "imported": 0, "message": "No logs to import"}
+    
+    # Ensure user exists
+    get_or_create_user(db, req.user_id)
+    
+    imported_count = 0
+    dates_to_update = set()
+    
+    for log_entry in req.logs:
+        try:
+            # Parse the timestamp
+            timestamp = datetime.fromisoformat(log_entry.timestamp.replace('Z', '+00:00'))
+            date_str = timestamp.strftime("%Y-%m-%d")
+            
+            # Check if this exact log already exists (prevent duplicates)
+            existing = db.query(models.WaterIntake).filter(
+                models.WaterIntake.user_id == req.user_id,
+                models.WaterIntake.intake_ml == log_entry.amount,
+                models.WaterIntake.timestamp == timestamp
+            ).first()
+            
+            if not existing:
+                db_log = models.WaterIntake(
+                    user_id=req.user_id,
+                    intake_ml=log_entry.amount,
+                    timestamp=timestamp
+                )
+                db.add(db_log)
+                imported_count += 1
+                dates_to_update.add(date_str)
+        except Exception as e:
+            print(f"Failed to import log: {log_entry}, error: {e}")
+            continue
+    
+    db.commit()
+    
+    # Update daily snapshots for all affected dates
+    for date_str in dates_to_update:
+        db_create_or_update_snapshot(db, req.user_id, date_str, req.goal)
+    
+    return {
+        "status": "success",
+        "imported": imported_count,
+        "dates_updated": list(dates_to_update)
+    }
 
 @app.post("/log")
 def log_intake(req: LogRequest, db: Session = Depends(get_db)):

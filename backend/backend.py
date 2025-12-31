@@ -48,17 +48,18 @@ def get_or_create_user(db: Session, user_id: str):
         db.commit()
     return user
 
-def db_log_intake(db: Session, user_id: str, amount: int, date_str: str = None):
+def db_log_intake(db: Session, user_id: str, amount: int, date_str: str = None, client_timestamp: str = None):
     # Ensure User exists
     get_or_create_user(db, user_id)
     
-    today_str = datetime.now().strftime("%Y-%m-%d")
-    
-    if date_str and date_str != today_str:
-        # Backdated log: use noon for past dates
+    if client_timestamp:
+        # Client sent their exact timestamp - use it directly (timezone-accurate)
+        timestamp = datetime.fromisoformat(client_timestamp.replace('Z', '+00:00'))
+    elif date_str:
+        # Backdating without specific time - use noon
         timestamp = datetime.strptime(f"{date_str} 12:00:00", "%Y-%m-%d %H:%M:%S")
     else:
-        # Today's log: use current time
+        # Fallback to server time
         timestamp = datetime.now()
         
     db_log = models.WaterIntake(user_id=user_id, intake_ml=amount, timestamp=timestamp)
@@ -384,6 +385,7 @@ class LogRequest(BaseModel):
     amount: int
     goal: int
     date: Optional[str] = None
+    client_timestamp: Optional[str] = None  # ISO timestamp from client for correct timezone
 
 class BulkLogEntry(BaseModel):
     amount: int
@@ -524,8 +526,8 @@ def claim_guest_data(req: ClaimGuestDataRequest, db: Session = Depends(get_db)):
 
 @app.post("/log")
 def log_intake(req: LogRequest, db: Session = Depends(get_db)):
-    # 1. Log to DB
-    log_id, timestamp = db_log_intake(db, req.user_id, req.amount, req.date)
+    # 1. Log to DB (pass client_timestamp for timezone-accurate logging)
+    log_id, timestamp = db_log_intake(db, req.user_id, req.amount, req.date, req.client_timestamp)
     
     # 2. Calculate total for the logged date
     logged_date = req.date or datetime.now().strftime("%Y-%m-%d")

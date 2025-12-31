@@ -1991,7 +1991,7 @@ const SettingsScreen = ({
             ) : (
               <p className="text-xs text-gray-500">Guest Mode</p>
             )}
-            <p className="text-xs text-gray-400">Hydration Champion 💧 (v1.3.7)</p>
+            <p className="text-xs text-gray-400">Hydration Champion 💧 (v1.3.8)</p>
           </div>
           <button
             onClick={() => editingProfile ? handleSaveProfile() : setEditingProfile(true)}
@@ -3067,7 +3067,9 @@ export default function App() {
           // For backdated logs, use base goal to avoid polluting history with today's conditions.
           goal: isBackdating ? goal : effectiveGoal,
           // ALWAYS send client's local date to prevent server UTC mismatch
-          date: isBackdating ? selectedDate : getLocalDateString()
+          date: isBackdating ? selectedDate : getLocalDateString(),
+          // For today's logs, send exact client timestamp for correct timezone display
+          client_timestamp: isBackdating ? null : new Date().toISOString()
         }),
       });
 

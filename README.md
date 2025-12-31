@@ -81,6 +81,7 @@ SmartSip helps you stay hydrated with intelligent tracking, personalized goals, 
 
 ## 📁 Project Structure
 
+```text
 SmartSip/
 ├── frontend/               # React/Vite frontend
 │   ├── src/
@@ -103,6 +104,7 @@ SmartSip/
 │   └── reports/           # Audit reports
 ├── render.yaml            # Render deployment config
 └── README.md              # Entry point
+```
 
 ---
 

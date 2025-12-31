@@ -1991,7 +1991,7 @@ const SettingsScreen = ({
             ) : (
               <p className="text-xs text-gray-500">Guest Mode</p>
             )}
-            <p className="text-xs text-gray-400">Hydration Champion 💧 (v1.3.4)</p>
+            <p className="text-xs text-gray-400">Hydration Champion 💧 (v1.3.5)</p>
           </div>
           <button
             onClick={() => editingProfile ? handleSaveProfile() : setEditingProfile(true)}
@@ -2842,9 +2842,12 @@ export default function App() {
     if (auth.loading || !USER_ID) return;
 
     const fetchData = async () => {
+      // Cache-busting timestamp to bypass PWA service worker cache
+      const cacheBust = `_t=${Date.now()}`;
+
       try {
         // 1. Fetch today's logs and total
-        const historyRes = await fetch(`${API_URL}/history/${USER_ID}?date=${selectedDate}`);
+        const historyRes = await fetch(`${API_URL}/history/${USER_ID}?date=${selectedDate}&${cacheBust}`);
         if (historyRes.ok) {
           const data = await historyRes.json();
           setTodayLogs(data.logs || []);
@@ -2855,7 +2858,7 @@ export default function App() {
         }
 
         // 2. Fetch streak (separate call to /stats)
-        const statsRes = await fetch(`${API_URL}/stats/${USER_ID}?days=30&goal=${goal}&client_date=${getLocalDateString()}`);
+        const statsRes = await fetch(`${API_URL}/stats/${USER_ID}?days=30&goal=${goal}&client_date=${getLocalDateString()}&${cacheBust}`);
         if (statsRes.ok) {
           const statsData = await statsRes.json();
           setStreak(statsData.streak || 0);

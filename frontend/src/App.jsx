@@ -1991,7 +1991,7 @@ const SettingsScreen = ({
             ) : (
               <p className="text-xs text-gray-500">Guest Mode</p>
             )}
-            <p className="text-xs text-gray-400">Hydration Champion 💧 (v1.3.0)</p>
+            <p className="text-xs text-gray-400">Hydration Champion 💧 (v1.3.1)</p>
           </div>
           <button
             onClick={() => editingProfile ? handleSaveProfile() : setEditingProfile(true)}
@@ -2834,19 +2834,19 @@ export default function App() {
     }
   }, [streak]);
 
-  // 1. Initial Data Fetch
+  // 1. Initial Data Fetch (re-runs when USER_ID changes after auth)
   useEffect(() => {
-    if (!auth.loading) {
+    if (!auth.loading && USER_ID) {
       fetchHistory();
     }
-  }, [auth.loading]);
+  }, [auth.loading, USER_ID]);
 
-  // Refetch when selected date changes
+  // Refetch when selected date changes (also when USER_ID changes)
   useEffect(() => {
-    if (!auth.loading) {
+    if (!auth.loading && USER_ID) {
       fetchDataForDate(selectedDate);
     }
-  }, [selectedDate, auth.loading]);
+  }, [selectedDate, auth.loading, USER_ID]);
 
   // NEW: Sync effective goal to backend when conditions change
   // This ensures that if you raise your goal (e.g. Hot Weather), the backend

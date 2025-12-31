@@ -1991,7 +1991,7 @@ const SettingsScreen = ({
             ) : (
               <p className="text-xs text-gray-500">Guest Mode</p>
             )}
-            <p className="text-xs text-gray-400">Hydration Champion 💧 (v1.3.3)</p>
+            <p className="text-xs text-gray-400">Hydration Champion 💧 (v1.3.4)</p>
           </div>
           <button
             onClick={() => editingProfile ? handleSaveProfile() : setEditingProfile(true)}
@@ -2837,13 +2837,37 @@ export default function App() {
   // NOTE: Removed separate fetchHistory useEffect - fetchDataForDate handles initial load
   // since selectedDate defaults to today. This eliminates the race condition.
 
-  // Refetch when selected date changes (also when USER_ID changes)
+  // Main data fetch - inlined to guarantee fresh USER_ID from deps
   useEffect(() => {
-    if (!auth.loading && USER_ID) {
-      // Pass USER_ID explicitly to avoid stale closure
-      fetchDataForDate(selectedDate, USER_ID);
-    }
-  }, [selectedDate, auth.loading, USER_ID]);
+    if (auth.loading || !USER_ID) return;
+
+    const fetchData = async () => {
+      try {
+        // 1. Fetch today's logs and total
+        const historyRes = await fetch(`${API_URL}/history/${USER_ID}?date=${selectedDate}`);
+        if (historyRes.ok) {
+          const data = await historyRes.json();
+          setTodayLogs(data.logs || []);
+          setTotalWater(data.total_today || 0);
+          if (data.historical_goal) setHistoricalGoal(data.historical_goal);
+          else setHistoricalGoal(null);
+          setIsBackendConnected(true);
+        }
+
+        // 2. Fetch streak (separate call to /stats)
+        const statsRes = await fetch(`${API_URL}/stats/${USER_ID}?days=30&goal=${goal}&client_date=${getLocalDateString()}`);
+        if (statsRes.ok) {
+          const statsData = await statsRes.json();
+          setStreak(statsData.streak || 0);
+        }
+      } catch (error) {
+        console.log("Failed to fetch data:", error);
+        setIsBackendConnected(false);
+      }
+    };
+
+    fetchData();
+  }, [selectedDate, auth.loading, USER_ID, goal]);
 
   // NEW: Sync effective goal to backend when conditions change
   // This ensures that if you raise your goal (e.g. Hot Weather), the backend

@@ -2479,80 +2479,76 @@ export default function App() {
   };
 
   // --- GUEST DATA MIGRATION ---
-  // When user logs in, migrate their localStorage data to the backend
+  // When user logs in, migrate their localStorage data AND claim DB guest records
   useEffect(() => {
     const migrateGuestData = async () => {
       // Only run if user just authenticated (has real ID, not guest)
       if (!auth.userId || auth.isGuest) return;
 
-      // Check if we've already migrated
-      const migrationKey = `migrated_to_${auth.userId}`;
-      if (localStorage.getItem(migrationKey)) return;
+      // Use SEPARATE flags for localStorage and DB migration
+      const localMigrationKey = `localStorage_migrated_to_${auth.userId}`;
+      const dbClaimKey = `db_claimed_to_${auth.userId}`;
 
-      // Get logs from localStorage
-      const savedLogs = localStorage.getItem('waterLogs');
-      if (!savedLogs) {
-        localStorage.setItem(migrationKey, 'true');
-        return;
-      }
+      // 1. Migrate localStorage data (if not already done)
+      if (!localStorage.getItem(localMigrationKey)) {
+        const savedLogs = localStorage.getItem('waterLogs');
+        if (savedLogs) {
+          try {
+            const logs = JSON.parse(savedLogs);
+            if (Array.isArray(logs) && logs.length > 0) {
+              const formattedLogs = logs.map(log => ({
+                amount: log.amount,
+                timestamp: log.time || log.timestamp || new Date().toISOString()
+              }));
 
-      try {
-        const logs = JSON.parse(savedLogs);
-        if (!Array.isArray(logs) || logs.length === 0) {
-          localStorage.setItem(migrationKey, 'true');
-          return;
-        }
+              console.log(`Migrating ${formattedLogs.length} guest logs from localStorage`);
 
-        // Format logs for bulk import
-        const formattedLogs = logs.map(log => ({
-          amount: log.amount,
-          timestamp: log.time || log.timestamp || new Date().toISOString()
-        }));
+              const response = await fetch(`${API_URL}/bulk-import`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  user_id: auth.userId,
+                  logs: formattedLogs,
+                  goal: goal
+                })
+              });
 
-        console.log(`Migrating ${formattedLogs.length} guest logs to user ${auth.userId}`);
-
-        // Send to backend
-        const response = await fetch(`${API_URL}/bulk-import`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            user_id: auth.userId,
-            logs: formattedLogs,
-            goal: goal
-          })
-        });
-
-        if (response.ok) {
-          const result = await response.json();
-          console.log(`Migration complete: ${result.imported} logs imported`);
-          localStorage.setItem(migrationKey, 'true');
-        }
-      } catch (e) {
-        console.error('Guest data migration failed:', e);
-      }
-
-      // ALSO claim any database guest records (separate from localStorage)
-      try {
-        const claimResponse = await fetch(`${API_URL}/claim-guest-data`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            user_id: auth.userId,
-            goal: goal
-          })
-        });
-
-        if (claimResponse.ok) {
-          const claimResult = await claimResponse.json();
-          if (claimResult.logs_transferred > 0) {
-            console.log(`Claimed ${claimResult.logs_transferred} guest logs from database`);
+              if (response.ok) {
+                const result = await response.json();
+                console.log(`localStorage migration: ${result.imported} logs imported`);
+              }
+            }
+          } catch (e) {
+            console.error('localStorage migration failed:', e);
           }
         }
-      } catch (e) {
-        console.error('Guest data claim failed:', e);
+        localStorage.setItem(localMigrationKey, 'true');
       }
 
-      // Refresh all data after migration/claim
+      // 2. Claim database guest records (ALWAYS runs if not yet claimed)
+      if (!localStorage.getItem(dbClaimKey)) {
+        try {
+          console.log('Claiming guest database records...');
+          const claimResponse = await fetch(`${API_URL}/claim-guest-data`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              user_id: auth.userId,
+              goal: goal
+            })
+          });
+
+          if (claimResponse.ok) {
+            const claimResult = await claimResponse.json();
+            console.log(`DB claim: ${claimResult.logs_transferred} logs, ${claimResult.snapshots_transferred} snapshots`);
+            localStorage.setItem(dbClaimKey, 'true');
+          }
+        } catch (e) {
+          console.error('Guest data claim failed:', e);
+        }
+      }
+
+      // 3. Refresh all data after migration/claim
       fetchStats();
       fetchHistory();
     };

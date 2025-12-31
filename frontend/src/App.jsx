@@ -2987,7 +2987,8 @@ export default function App() {
           // CRITICAL: For today, record the effective smart goal.
           // For backdated logs, use base goal to avoid polluting history with today's conditions.
           goal: isBackdating ? goal : effectiveGoal,
-          date: isBackdating ? selectedDate : null
+          // ALWAYS send client's local date to prevent server UTC mismatch
+          date: isBackdating ? selectedDate : getLocalDateString()
         }),
       });
 

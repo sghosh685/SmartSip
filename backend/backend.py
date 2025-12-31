@@ -322,9 +322,16 @@ def get_ai_feedback(current_intake: int, goal: int):
 
 
 # --- STATS AGGREGATION ---
-def db_get_stats(db: Session, user_id: str, days: int = 365):
+def db_get_stats(db: Session, user_id: str, days: int = 365, client_date: str = None):
     """Get daily totals for the past N days."""
-    today = datetime.now()
+    if client_date:
+        try:
+            today = datetime.strptime(client_date, "%Y-%m-%d")
+        except ValueError:
+            today = datetime.now()
+    else:
+        today = datetime.now()
+        
     cutoff_date = today - timedelta(days=days)
     
     # Efficiently group by date in SQL if using Postgres, but for broad compatibility (SQLite)
@@ -612,7 +619,7 @@ def ai_feedback(user_id: str, goal: int, db: Session = Depends(get_db)):
 
 @app.get("/stats/{user_id}")
 def get_stats(user_id: str, days: int = 30, goal: int = 2500, client_date: str = None, db: Session = Depends(get_db)):
-    daily_data = db_get_stats(db, user_id, days)
+    daily_data = db_get_stats(db, user_id, days, client_date)
     
     # Migration/Cleanup step - backfill any missing snapshots
     db_backfill_snapshots(db, user_id, goal)

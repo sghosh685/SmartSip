@@ -1991,7 +1991,7 @@ const SettingsScreen = ({
             ) : (
               <p className="text-xs text-gray-500">Guest Mode</p>
             )}
-            <p className="text-xs text-gray-400">Hydration Champion 💧 (v1.3.1)</p>
+            <p className="text-xs text-gray-400">Hydration Champion 💧 (v1.3.2)</p>
           </div>
           <button
             onClick={() => editingProfile ? handleSaveProfile() : setEditingProfile(true)}
@@ -2834,12 +2834,8 @@ export default function App() {
     }
   }, [streak]);
 
-  // 1. Initial Data Fetch (re-runs when USER_ID changes after auth)
-  useEffect(() => {
-    if (!auth.loading && USER_ID) {
-      fetchHistory();
-    }
-  }, [auth.loading, USER_ID]);
+  // NOTE: Removed separate fetchHistory useEffect - fetchDataForDate handles initial load
+  // since selectedDate defaults to today. This eliminates the race condition.
 
   // Refetch when selected date changes (also when USER_ID changes)
   useEffect(() => {
@@ -2922,6 +2918,9 @@ export default function App() {
         if (data.historical_goal) setHistoricalGoal(data.historical_goal);
         else setHistoricalGoal(null);
         setIsBackendConnected(true);
+
+        // Always fetch streak when loading data (ensures streak is up-to-date)
+        fetchStreak();
       }
     } catch (error) {
       console.log("Failed to fetch date data");

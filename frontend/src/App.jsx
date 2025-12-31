@@ -1991,7 +1991,7 @@ const SettingsScreen = ({
             ) : (
               <p className="text-xs text-gray-500">Guest Mode</p>
             )}
-            <p className="text-xs text-gray-400">Hydration Champion 💧 (v1.3.6)</p>
+            <p className="text-xs text-gray-400">Hydration Champion 💧 (v1.3.7)</p>
           </div>
           <button
             onClick={() => editingProfile ? handleSaveProfile() : setEditingProfile(true)}
@@ -2833,6 +2833,50 @@ export default function App() {
       setTimeout(() => setStreakToast(null), 4000);
     }
   }, [streak]);
+
+  // Track previous auth.loading to detect transition
+  const prevAuthLoading = useRef(true);
+  const hasFetchedOnMount = useRef(false);
+
+  // CRITICAL: Force fetch when auth transitions from loading to ready
+  useEffect(() => {
+    const wasLoading = prevAuthLoading.current;
+    const isNowReady = !auth.loading && !!auth.userId;
+
+    // Detect transition: was loading, now ready, haven't fetched yet
+    if (wasLoading && isNowReady && !hasFetchedOnMount.current) {
+      hasFetchedOnMount.current = true;
+      console.log(`[SmartSip v1.3.7] Auth ready! USER: ${auth.userId}, triggering fetch...`);
+
+      // Force immediate fetch with the REAL user ID
+      const fetchNow = async () => {
+        const cacheBust = `_t=${Date.now()}`;
+        try {
+          const historyRes = await fetch(`${API_URL}/history/${auth.userId}?date=${getLocalDateString()}&${cacheBust}`);
+          if (historyRes.ok) {
+            const data = await historyRes.json();
+            console.log(`[SmartSip] Initial load: total=${data.total_today}, logs=${data.logs?.length || 0}`);
+            setTodayLogs(data.logs || []);
+            setTotalWater(data.total_today || 0);
+            setIsBackendConnected(true);
+          }
+
+          const statsRes = await fetch(`${API_URL}/stats/${auth.userId}?days=30&goal=${goal}&client_date=${getLocalDateString()}&${cacheBust}`);
+          if (statsRes.ok) {
+            const statsData = await statsRes.json();
+            console.log(`[SmartSip] Initial load: streak=${statsData.streak}`);
+            setStreak(statsData.streak || 0);
+          }
+        } catch (e) {
+          console.log('[SmartSip] Initial fetch failed:', e);
+        }
+      };
+
+      fetchNow();
+    }
+
+    prevAuthLoading.current = auth.loading;
+  }, [auth.loading, auth.userId, goal]);
 
   // NOTE: Removed separate fetchHistory useEffect - fetchDataForDate handles initial load
   // since selectedDate defaults to today. This eliminates the race condition.

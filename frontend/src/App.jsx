@@ -2893,7 +2893,7 @@ export default function App() {
 
   const fetchHistory = async () => {
     try {
-      const response = await fetch(`${API_URL}/history/${USER_ID}`);
+      const response = await fetch(`${API_URL}/history/${USER_ID}?date=${getLocalDateString()}`);
       if (!response.ok) throw new Error("Backend offline");
       const data = await response.json();
       setTodayLogs(data.logs || []);

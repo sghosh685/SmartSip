@@ -972,7 +972,7 @@ const StatsScreen = ({ logs, goal, isDarkMode, unlockedBadges = [], userId }) =>
         'calendar': 365, 'Month': 30, 'Year': 365
       };
       const days = daysMap[viewMode] || 7;
-      const response = await fetch(`${API_URL}/stats/${userId}?days=${days}&goal=${goal}`);
+      const response = await fetch(`${API_URL}/stats/${userId}?days=${days}&goal=${goal}&client_date=${getLocalDateString()}`);
       if (response.ok) {
         const data = await response.json();
         setStatsData(data);
@@ -2593,7 +2593,7 @@ export default function App() {
     try {
       // Default to 7 days for dashboard view
       const days = 7;
-      const response = await fetch(`${API_URL}/stats/${USER_ID}?days=${days}&goal=${goal}`);
+      const response = await fetch(`${API_URL}/stats/${USER_ID}?days=${days}&goal=${goal}&client_date=${getLocalDateString()}`);
       if (response.ok) {
         const data = await response.json();
         setStatsData(data);
@@ -2883,7 +2883,7 @@ export default function App() {
   const fetchStreak = async () => {
     try {
       // Goal param is legacy for streak but might be used by other stats
-      const statsRes = await fetch(`${API_URL}/stats/${USER_ID}?days=30&goal=${goal}`);
+      const statsRes = await fetch(`${API_URL}/stats/${USER_ID}?days=30&goal=${goal}&client_date=${getLocalDateString()}`);
       if (statsRes.ok) {
         const statsData = await statsRes.json();
         setStreak(statsData.streak || 0);

@@ -198,7 +198,7 @@ def db_get_snapshots(db: Session, user_id: str, days: int = 365):
 # But we need to update its call signature later.
 # Actually, it calls db_get_snapshots internally. We must update it.
 
-def db_get_streak_from_snapshots(db: Session, user_id: str):
+def db_get_streak_from_snapshots(db: Session, user_id: str, client_date: str = None):
     """
     Calculate streak from daily snapshots.
     
@@ -226,7 +226,15 @@ def db_get_streak_from_snapshots(db: Session, user_id: str):
             # Prefer goal_met=True if duplicate exists
             snap_dict[date] = True
     
-    today = datetime.now().date()
+    # Use client_date if provided (for timezone accuracy), else server time
+    if client_date:
+        try:
+            today = datetime.strptime(client_date, "%Y-%m-%d").date()
+        except ValueError:
+            today = datetime.now().date()
+    else:
+        today = datetime.now().date()
+    
     yesterday = today - timedelta(days=1)
     
     # Determine starting point: today if goal met, or yesterday if today's goal not met yet
@@ -603,14 +611,14 @@ def ai_feedback(user_id: str, goal: int, db: Session = Depends(get_db)):
     return {"message": message}
 
 @app.get("/stats/{user_id}")
-def get_stats(user_id: str, days: int = 30, goal: int = 2500, db: Session = Depends(get_db)):
+def get_stats(user_id: str, days: int = 30, goal: int = 2500, client_date: str = None, db: Session = Depends(get_db)):
     daily_data = db_get_stats(db, user_id, days)
     
     # Migration/Cleanup step - backfill any missing snapshots
     db_backfill_snapshots(db, user_id, goal)
     
-    # Use ONLY the new streak logic (no fallback to old buggy version)
-    streak = db_get_streak_from_snapshots(db, user_id)
+    # Use ONLY the new streak logic with client timezone
+    streak = db_get_streak_from_snapshots(db, user_id, client_date)
     
     week_data = daily_data[:7]
     week_total = sum(d["total"] for d in week_data)

@@ -1991,7 +1991,7 @@ const SettingsScreen = ({
             ) : (
               <p className="text-xs text-gray-500">Guest Mode</p>
             )}
-            <p className="text-xs text-gray-400">Hydration Champion 💧 (v1.3.9)</p>
+            <p className="text-xs text-gray-400">Hydration Champion 💧 (v1.4.0)</p>
           </div>
           <button
             onClick={() => editingProfile ? handleSaveProfile() : setEditingProfile(true)}
@@ -2577,6 +2577,7 @@ export default function App() {
   const [streak, setStreak] = useState(0);
   const [statsData, setStatsData] = useState(null); // Lifted stats state
   const [historicalGoal, setHistoricalGoal] = useState(null); // NEW: Goal from snapshot for past dates
+  const [isInitialDataLoaded, setIsInitialDataLoaded] = useState(false); // Track if initial load is done
   // Theme State: 'glass' | 'garden'
   // Theme State: 'glass' | 'garden', persisted in localStorage
   const [theme, setTheme] = useState(() => {
@@ -2834,97 +2835,57 @@ export default function App() {
     }
   }, [streak]);
 
-  // Track previous auth.loading to detect transition
-  const prevAuthLoading = useRef(auth.loading);
-  const hasFetchedOnMount = useRef(false);
-
-  // CRITICAL: Force fetch when auth transitions from loading to loaded
-  // Works for BOTH authenticated users AND guests
+  // ============================================================================
+  // INITIAL DATA LOAD - Simple, guaranteed fetch when auth is ready
+  // Replaces previous fragile transition detection pattern
+  // ============================================================================
   useEffect(() => {
-    const wasLoading = prevAuthLoading.current;
-    const isDoneLoading = !auth.loading;
-
-    // Detect transition: was loading, now done loading, haven't fetched yet
-    if (wasLoading && isDoneLoading && !hasFetchedOnMount.current) {
-      hasFetchedOnMount.current = true;
-      const currentUserId = auth.userId || 'guest-local-user';
-      console.log(`[SmartSip v1.3.9] Auth done! USER: ${currentUserId}, fetching data...`);
-
-      // Force immediate fetch with the CURRENT user ID
-      const fetchNow = async () => {
-        const cacheBust = `_t=${Date.now()}`;
-        try {
-          const historyRes = await fetch(`${API_URL}/history/${currentUserId}?date=${getLocalDateString()}&${cacheBust}`);
-          if (historyRes.ok) {
-            const data = await historyRes.json();
-            console.log(`[SmartSip] Loaded: total=${data.total_today}, logs=${data.logs?.length || 0}`);
-            setTodayLogs(data.logs || []);
-            setTotalWater(data.total_today || 0);
-            setIsBackendConnected(true);
-          }
-
-          const statsRes = await fetch(`${API_URL}/stats/${currentUserId}?days=30&goal=${goal}&client_date=${getLocalDateString()}&${cacheBust}`);
-          if (statsRes.ok) {
-            const statsData = await statsRes.json();
-            console.log(`[SmartSip] Loaded: streak=${statsData.streak}`);
-            setStreak(statsData.streak || 0);
-          }
-        } catch (e) {
-          console.log('[SmartSip] Initial fetch failed:', e);
-        }
-      };
-
-      fetchNow();
+    // Wait for auth to finish loading
+    if (auth.loading) {
+      console.log('[SmartSip v1.4.0] Auth still loading, waiting...');
+      return;
     }
 
-    prevAuthLoading.current = auth.loading;
-  }, [auth.loading, auth.userId, goal]);
+    // Determine user ID (authenticated or guest)
+    const currentUserId = auth.userId || 'guest-local-user';
+    const cacheBust = `_t=${Date.now()}`;
 
-  // NOTE: Removed separate fetchHistory useEffect - fetchDataForDate handles initial load
-  // since selectedDate defaults to today. This eliminates the race condition.
+    console.log(`[SmartSip v1.4.0] Auth ready! Fetching data for USER: ${currentUserId}`);
 
-  // Main data fetch - inlined to guarantee fresh USER_ID from deps
-  useEffect(() => {
-    if (auth.loading || !USER_ID) return;
+    // Single, unified data fetch
+    const fetchInitialData = async () => {
+      try {
+        // Parallel fetch for better performance
+        const [historyRes, statsRes] = await Promise.all([
+          fetch(`${API_URL}/history/${currentUserId}?date=${selectedDate}&${cacheBust}`),
+          fetch(`${API_URL}/stats/${currentUserId}?days=30&goal=${goal}&client_date=${getLocalDateString()}&${cacheBust}`)
+        ]);
 
-    // Small delay to ensure React state is fully settled after auth
-    const timer = setTimeout(() => {
-      const fetchData = async () => {
-        // Cache-busting timestamp to bypass PWA service worker cache
-        const cacheBust = `_t=${Date.now()}`;
-        console.log(`[SmartSip v1.3.6] Fetching data for USER: ${USER_ID}, DATE: ${selectedDate}`);
-
-        try {
-          // 1. Fetch today's logs and total
-          const historyRes = await fetch(`${API_URL}/history/${USER_ID}?date=${selectedDate}&${cacheBust}`);
-          if (historyRes.ok) {
-            const data = await historyRes.json();
-            console.log(`[SmartSip] History response: total=${data.total_today}, logs=${data.logs?.length || 0}`);
-            setTodayLogs(data.logs || []);
-            setTotalWater(data.total_today || 0);
-            if (data.historical_goal) setHistoricalGoal(data.historical_goal);
-            else setHistoricalGoal(null);
-            setIsBackendConnected(true);
-          }
-
-          // 2. Fetch streak (separate call to /stats)
-          const statsRes = await fetch(`${API_URL}/stats/${USER_ID}?days=30&goal=${goal}&client_date=${getLocalDateString()}&${cacheBust}`);
-          if (statsRes.ok) {
-            const statsData = await statsRes.json();
-            console.log(`[SmartSip] Stats response: streak=${statsData.streak}`);
-            setStreak(statsData.streak || 0);
-          }
-        } catch (error) {
-          console.log("Failed to fetch data:", error);
-          setIsBackendConnected(false);
+        if (historyRes.ok) {
+          const data = await historyRes.json();
+          console.log(`[SmartSip] Loaded: total=${data.total_today}, logs=${data.logs?.length || 0}`);
+          setTodayLogs(data.logs || []);
+          setTotalWater(data.total_today || 0);
+          if (data.historical_goal) setHistoricalGoal(data.historical_goal);
+          else setHistoricalGoal(null);
+          setIsBackendConnected(true);
         }
-      };
 
-      fetchData();
-    }, 100); // 100ms delay to let state settle
+        if (statsRes.ok) {
+          const statsData = await statsRes.json();
+          console.log(`[SmartSip] Loaded: streak=${statsData.streak}`);
+          setStreak(statsData.streak || 0);
+        }
+      } catch (error) {
+        console.log('[SmartSip] Initial fetch failed:', error);
+        setIsBackendConnected(false);
+      } finally {
+        setIsInitialDataLoaded(true);
+      }
+    };
 
-    return () => clearTimeout(timer);
-  }, [selectedDate, auth.loading, USER_ID, goal]);
+    fetchInitialData();
+  }, [auth.loading, auth.userId, selectedDate, goal]);
 
   // NEW: Sync effective goal to backend when conditions change
   // This ensures that if you raise your goal (e.g. Hot Weather), the backend

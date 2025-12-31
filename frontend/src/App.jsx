@@ -1991,7 +1991,7 @@ const SettingsScreen = ({
             ) : (
               <p className="text-xs text-gray-500">Guest Mode</p>
             )}
-            <p className="text-xs text-gray-400">Hydration Champion 💧 (v1.4.0)</p>
+            <p className="text-xs text-gray-400">Hydration Champion 💧 (v1.4.1)</p>
           </div>
           <button
             onClick={() => editingProfile ? handleSaveProfile() : setEditingProfile(true)}
@@ -2885,7 +2885,7 @@ export default function App() {
     };
 
     fetchInitialData();
-  }, [auth.loading, auth.userId, selectedDate, goal]);
+  }, [auth.loading, auth.userId]); // Only re-fetch when auth state changes
 
   // NEW: Sync effective goal to backend when conditions change
   // This ensures that if you raise your goal (e.g. Hot Weather), the backend

@@ -52,9 +52,13 @@ def db_log_intake(db: Session, user_id: str, amount: int, date_str: str = None):
     # Ensure User exists
     get_or_create_user(db, user_id)
     
-    if date_str:
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    
+    if date_str and date_str != today_str:
+        # Backdated log: use noon for past dates
         timestamp = datetime.strptime(f"{date_str} 12:00:00", "%Y-%m-%d %H:%M:%S")
     else:
+        # Today's log: use current time
         timestamp = datetime.now()
         
     db_log = models.WaterIntake(user_id=user_id, intake_ml=amount, timestamp=timestamp)

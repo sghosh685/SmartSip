@@ -4,8 +4,7 @@
 
 SmartSip helps you stay hydrated with intelligent tracking, personalized goals, and an AI coach. Built as a Progressive Web App for seamless mobile and desktop experience.
 
-![SmartSip](https://img.shields.io/badge/Version-1.0.0-blue)
-![License](https://img.shields.io/badge/License-MIT-green)
+![SmartSip](https://img.shields.io/badge/Version-1.4.0-blue)
 ![PWA](https://img.shields.io/badge/PWA-Ready-purple)
 
 ---
@@ -82,7 +81,6 @@ SmartSip helps you stay hydrated with intelligent tracking, personalized goals, 
 
 ## 📁 Project Structure
 
-```
 SmartSip/
 ├── frontend/               # React/Vite frontend
 │   ├── src/
@@ -96,14 +94,15 @@ SmartSip/
 │   ├── backend.py         # API routes and logic
 │   ├── database.py        # SQLAlchemy setup
 │   ├── models.py          # Database models
-│   ├── requirements.txt   # Python dependencies
+│   ├── tests/             # Backend tests
 │   └── .env.example       # Environment template
+├── docs/                  # Documentation
+│   ├── architecture/      # Architectural decisions
+│   ├── setup/             # Setup and deployment guides
+│   ├── planning/          # Feature planning checklists
+│   └── reports/           # Audit reports
 ├── render.yaml            # Render deployment config
-├── DEPLOYMENT.md          # Deployment guide
-├── SUPABASE_SETUP.md      # Supabase configuration
-├── GOOGLE_OAUTH_SETUP.md  # OAuth setup guide
-└── QA_CHECKLIST.md        # Testing checklist
-```
+└── README.md              # Entry point
 
 ---
 
@@ -127,10 +126,10 @@ CORS_ORIGINS=http://localhost:5173
 
 ## 📖 Documentation
 
-- [Supabase Setup Guide](./SUPABASE_SETUP.md)
-- [Google OAuth Setup](./GOOGLE_OAUTH_SETUP.md)
-- [Deployment Guide](./DEPLOYMENT.md)
-- [QA Checklist](./QA_CHECKLIST.md)
+- [Supabase Setup Guide](./docs/setup/SUPABASE_SETUP.md)
+- [Google OAuth Setup](./docs/setup/GOOGLE_OAUTH_SETUP.md)
+- [Deployment Guide](./docs/setup/DEPLOYMENT.md)
+- [QA Checklist](./docs/planning/QA_CHECKLIST.md)
 
 ---
 
@@ -146,7 +145,9 @@ CORS_ORIGINS=http://localhost:5173
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+Copyright © 2025 SmartSip. All Rights Reserved.
+
+Proprietary software. See the [LICENSE](LICENSE) file for details.
 
 ---
 

@@ -648,3 +648,44 @@ def debug_snapshots(user_id: str, db: Session = Depends(get_db)):
         "snapshots": snapshots,
         "snapshot_count": len(snapshots)
     }
+
+# Data fix endpoint - move incorrectly dated records
+@app.post("/fix-dates")
+def fix_dates(user_id: str, from_date: str, to_date: str, goal: int = 2500, db: Session = Depends(get_db)):
+    """Move water logs and snapshots from one date to another (for timezone fixes)."""
+    
+    # 1. Update water_intake timestamps
+    logs = db.query(models.WaterIntake).filter(
+        models.WaterIntake.user_id == user_id
+    ).all()
+    
+    moved_logs = 0
+    for log in logs:
+        log_date = log.timestamp.strftime("%Y-%m-%d")
+        if log_date == from_date:
+            # Update the timestamp to the correct date, keeping the time
+            new_timestamp = log.timestamp.replace(
+                year=int(to_date[:4]),
+                month=int(to_date[5:7]),
+                day=int(to_date[8:10])
+            )
+            log.timestamp = new_timestamp
+            moved_logs += 1
+    
+    # 2. Delete the incorrect date's snapshot
+    db.query(models.DailySnapshot).filter(
+        models.DailySnapshot.user_id == user_id,
+        models.DailySnapshot.date == from_date
+    ).delete()
+    
+    db.commit()
+    
+    # 3. Recreate snapshot for the correct date
+    db_create_or_update_snapshot(db, user_id, to_date, goal)
+    
+    return {
+        "status": "success",
+        "logs_moved": moved_logs,
+        "from_date": from_date,
+        "to_date": to_date
+    }

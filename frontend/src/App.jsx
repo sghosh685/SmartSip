@@ -1991,7 +1991,7 @@ const SettingsScreen = ({
             ) : (
               <p className="text-xs text-gray-500">Guest Mode</p>
             )}
-            <p className="text-xs text-gray-400">Hydration Champion 💧 (v1.3.2)</p>
+            <p className="text-xs text-gray-400">Hydration Champion 💧 (v1.3.3)</p>
           </div>
           <button
             onClick={() => editingProfile ? handleSaveProfile() : setEditingProfile(true)}
@@ -2840,7 +2840,8 @@ export default function App() {
   // Refetch when selected date changes (also when USER_ID changes)
   useEffect(() => {
     if (!auth.loading && USER_ID) {
-      fetchDataForDate(selectedDate);
+      // Pass USER_ID explicitly to avoid stale closure
+      fetchDataForDate(selectedDate, USER_ID);
     }
   }, [selectedDate, auth.loading, USER_ID]);
 
@@ -2876,10 +2877,10 @@ export default function App() {
   }, [effectiveGoal, selectedDate]);
 
   // NEW: Dedicated Streak Fetcher
-  const fetchStreak = async () => {
+  const fetchStreak = async (userId = USER_ID) => {
     try {
       // Goal param is legacy for streak but might be used by other stats
-      const statsRes = await fetch(`${API_URL}/stats/${USER_ID}?days=30&goal=${goal}&client_date=${getLocalDateString()}`);
+      const statsRes = await fetch(`${API_URL}/stats/${userId}?days=30&goal=${goal}&client_date=${getLocalDateString()}`);
       if (statsRes.ok) {
         const statsData = await statsRes.json();
         setStreak(statsData.streak || 0);
@@ -2906,11 +2907,11 @@ export default function App() {
     }
   };
 
-  // Fetch total for a specific date
-  const fetchDataForDate = async (dateStr) => {
+  // Fetch total for a specific date (userId passed explicitly to avoid stale closure)
+  const fetchDataForDate = async (dateStr, userId = USER_ID) => {
     try {
       // Fetch logs for the selected date
-      const historyRes = await fetch(`${API_URL}/history/${USER_ID}?date=${dateStr}`);
+      const historyRes = await fetch(`${API_URL}/history/${userId}?date=${dateStr}`);
       if (historyRes.ok) {
         const data = await historyRes.json();
         setTodayLogs(data.logs || []);
@@ -2919,8 +2920,8 @@ export default function App() {
         else setHistoricalGoal(null);
         setIsBackendConnected(true);
 
-        // Always fetch streak when loading data (ensures streak is up-to-date)
-        fetchStreak();
+        // Always fetch streak when loading data (pass userId to avoid stale closure)
+        fetchStreak(userId);
       }
     } catch (error) {
       console.log("Failed to fetch date data");

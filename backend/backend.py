@@ -445,8 +445,18 @@ def bulk_import(req: BulkImportRequest, db: Session = Depends(get_db)):
     db.commit()
     
     # Update daily snapshots for all affected dates
+    # Update daily snapshots for all affected dates
     for date_str in dates_to_update:
-        db_create_or_update_snapshot(db, req.user_id, date_str, req.goal)
+        # FIX v1.5.9: Preserve historical goal if snapshot already exists
+        # Otherwise use current goal for new dates
+        existing_snap = db.query(models.DailySnapshot).filter(
+            models.DailySnapshot.user_id == req.user_id,
+            models.DailySnapshot.date == date_str
+        ).first()
+        
+        target_goal = existing_snap.goal_for_day if existing_snap else req.goal
+        
+        db_create_or_update_snapshot(db, req.user_id, date_str, target_goal)
     
     return {
         "status": "success",
@@ -515,7 +525,16 @@ def claim_guest_data(req: ClaimGuestDataRequest, db: Session = Depends(get_db)):
     
     # Recreate snapshots for affected dates (to ensure accuracy)
     for date_str in dates_affected:
-        db_create_or_update_snapshot(db, req.user_id, date_str, req.goal)
+        # FIX v1.5.9: Preserve historical goal if snapshot already exists
+        # This prevents retroactive broken streaks if current goal > historical goal
+        existing_snap = db.query(models.DailySnapshot).filter(
+            models.DailySnapshot.user_id == req.user_id,
+            models.DailySnapshot.date == date_str
+        ).first()
+        
+        target_goal = existing_snap.goal_for_day if existing_snap else req.goal
+        
+        db_create_or_update_snapshot(db, req.user_id, date_str, target_goal)
     
     return {
         "status": "success",

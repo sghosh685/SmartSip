@@ -2002,7 +2002,7 @@ const SettingsScreen = ({
             ) : (
               <p className="text-xs text-gray-500">Guest Mode</p>
             )}
-            <p className="text-xs text-gray-400">Hydration Champion 💧 (v1.5.5)</p>
+            <p className="text-xs text-gray-400">Hydration Champion 💧 (v1.5.6)</p>
           </div>
           <button
             onClick={() => editingProfile ? handleSaveProfile() : setEditingProfile(true)}
@@ -2559,9 +2559,10 @@ export default function App() {
         }
       }
 
-      // 3. Refresh all data after migration/claim
-      fetchStats();
-      fetchHistory();
+      // 3. Data refresh is now handled by unified fetch effect (v1.5.6)
+      // REMOVED: fetchStats(); fetchHistory(); - these were causing race condition
+      // The unified fetch effect will automatically re-run when auth.userId changes
+      console.log('[SmartSip v1.5.6] Migration complete - unified fetch will handle data loading');
     };
 
     migrateGuestData();

@@ -2002,7 +2002,7 @@ const SettingsScreen = ({
             ) : (
               <p className="text-xs text-gray-500">Guest Mode</p>
             )}
-            <p className="text-xs text-gray-400">Hydration Champion 💧 (v1.5.6)</p>
+            <p className="text-xs text-gray-400">Hydration Champion 💧 (v1.5.7)</p>
           </div>
           <button
             onClick={() => editingProfile ? handleSaveProfile() : setEditingProfile(true)}
@@ -2867,21 +2867,33 @@ export default function App() {
   const hasInitiallyLoaded = useRef(false);
 
   // ============================================================================
-  // UNIFIED DATA FETCH - v1.5.5: Fixed timing issue with setTimeout cleanup
-  // Now uses isMounted pattern for immediate fetch with cleanup protection
+  // UNIFIED DATA FETCH - v1.5.7: Prevents guest fetch from overwriting auth data
+  // Tracks last fetched user to prevent auth state transition issues
   // ============================================================================
+  const lastFetchedUserId = useRef(null);
+
   useEffect(() => {
     // Wait for auth to finish loading
     if (auth.loading) {
-      console.log('[SmartSip v1.5.5] Auth still loading, waiting...');
+      console.log('[SmartSip v1.5.7] Auth still loading, waiting...');
+      return;
+    }
+
+    const currentUserId = auth.userId || 'guest-local-user';
+
+    // CRITICAL FIX: If we've already fetched for an authenticated user,
+    // don't allow a subsequent fetch for guest to overwrite that data
+    if (lastFetchedUserId.current &&
+      lastFetchedUserId.current !== 'guest-local-user' &&
+      currentUserId === 'guest-local-user') {
+      console.log('[SmartSip v1.5.7] Blocking guest fetch - already have authenticated user data');
       return;
     }
 
     let isMounted = true;
-    const currentUserId = auth.userId || 'guest-local-user';
     const cacheBust = `_t=${Date.now()}`;
 
-    console.log(`[SmartSip v1.5.5] Auth ready! Fetching ALL data for user: ${currentUserId}, date: ${selectedDate}`);
+    console.log(`[SmartSip v1.5.7] Auth ready! Fetching ALL data for user: ${currentUserId}, date: ${selectedDate}`);
 
     const fetchAllData = async () => {
       try {
@@ -2893,29 +2905,29 @@ export default function App() {
 
         // Only update state if component is still mounted
         if (!isMounted) {
-          console.log('[SmartSip v1.5.5] Component unmounted, skipping state update');
+          console.log('[SmartSip v1.5.7] Component unmounted, skipping state update');
           return;
         }
 
         // Process stats
         if (statsRes.ok) {
           const statsData = await statsRes.json();
-          console.log(`[SmartSip v1.5.5] Stats received: streak=${statsData.streak}`);
+          console.log(`[SmartSip v1.5.7] Stats received: streak=${statsData.streak}`);
           if (isMounted) {
             setStreak(statsData.streak || 0);
             setStatsData(statsData);
-            console.log(`[SmartSip v1.5.5] Streak state set to: ${statsData.streak || 0}`);
+            console.log(`[SmartSip v1.5.7] Streak state set to: ${statsData.streak || 0}`);
           }
         }
 
         // Process history (TODAY's water logs)
         if (historyRes.ok) {
           const historyData = await historyRes.json();
-          console.log(`[SmartSip v1.5.5] History received: total=${historyData.total_today}, logs=${historyData.logs?.length || 0}`);
+          console.log(`[SmartSip v1.5.7] History received: total=${historyData.total_today}, logs=${historyData.logs?.length || 0}`);
           if (isMounted) {
             setTodayLogs(historyData.logs || []);
             setTotalWater(historyData.total_today || 0);
-            console.log(`[SmartSip v1.5.5] TotalWater state set to: ${historyData.total_today || 0}`);
+            console.log(`[SmartSip v1.5.7] TotalWater state set to: ${historyData.total_today || 0}`);
             if (historyData.historical_goal) setHistoricalGoal(historyData.historical_goal);
             else setHistoricalGoal(null);
           }
@@ -2924,10 +2936,12 @@ export default function App() {
         if (isMounted) {
           setIsBackendConnected(true);
           hasInitiallyLoaded.current = true;
+          lastFetchedUserId.current = currentUserId; // Track which user we fetched for
           setIsInitialDataLoaded(true);
+          console.log(`[SmartSip v1.5.7] Data load complete for user: ${currentUserId}`);
         }
       } catch (error) {
-        console.error('[SmartSip v1.5.5] Data fetch failed:', error);
+        console.error('[SmartSip v1.5.7] Data fetch failed:', error);
         if (isMounted) {
           setIsBackendConnected(false);
           setIsInitialDataLoaded(true);

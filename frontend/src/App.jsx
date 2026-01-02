@@ -2002,7 +2002,7 @@ const SettingsScreen = ({
             ) : (
               <p className="text-xs text-gray-500">Guest Mode</p>
             )}
-            <p className="text-xs text-gray-400">Hydration Champion 💧 (v1.5.9)</p>
+            <p className="text-xs text-gray-400">Hydration Champion 💧 (v1.6.0)</p>
           </div>
           <button
             onClick={() => editingProfile ? handleSaveProfile() : setEditingProfile(true)}
@@ -2978,9 +2978,13 @@ export default function App() {
   // This ensures that if you raise your goal (e.g. Hot Weather), the backend
   // immediately knows. If you haven't met the new goal, your streak will drop.
   useEffect(() => {
-    // Only sync if looking at today (past dates are locked)
+    // ALLOWED FOR ALL DATES (v1.6.0) - Enables retroactive goal correction
+    // Allow syncing for today AND past dates (to fix history), but not future
     const todayStr = getLocalDateString();
-    if (selectedDate === todayStr) {
+    const isViewingFuture = selectedDate > todayStr;
+    let isMounted = true;
+
+    if (!isViewingFuture) {
       const syncGoal = async () => {
         try {
           await fetch(`${API_URL}/update-goal`, {
@@ -2988,12 +2992,25 @@ export default function App() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               user_id: USER_ID,
-              date: todayStr,
+              date: selectedDate, // Use selectedDate to update correct history
               goal: effectiveGoal
             })
           });
-          // Re-fetch history to update streak (it might drop if goal > total)
-          fetchHistory();
+          // Re-fetch history to update streak (it might drop or rise if goal changes)
+          // We only fetch history (streak is part of stats but updated by history endpoint in backend)
+          // Actually we need to refetch stats to see updated streak
+          const cacheBust = `_t=${Date.now()}`;
+          const currentUserId = auth.userId || 'guest-local-user';
+
+          // Refetch stats to update streak immediately in UI
+          const statsRes = await fetch(`${API_URL}/stats/${currentUserId}?days=30&goal=${goal}&client_date=${todayStr}&${cacheBust}`);
+          if (statsRes.ok) {
+            const statsData = await statsRes.json();
+            if (isMounted) {
+              setStreak(statsData.streak || 0);
+              setStatsData(statsData);
+            }
+          }
         } catch (e) {
           console.error("Failed to sync goal", e);
         }
@@ -3001,9 +3018,9 @@ export default function App() {
 
       // Debounce to allow rapid toggling
       const timer = setTimeout(syncGoal, 500);
-      return () => clearTimeout(timer);
+      return () => { clearTimeout(timer); isMounted = false; };
     }
-  }, [effectiveGoal, selectedDate]);
+  }, [effectiveGoal, selectedDate, auth.userId, goal]);
 
   // NEW: Dedicated Streak Fetcher
   const fetchStreak = async (userId = USER_ID) => {

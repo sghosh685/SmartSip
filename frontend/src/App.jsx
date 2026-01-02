@@ -2002,7 +2002,7 @@ const SettingsScreen = ({
             ) : (
               <p className="text-xs text-gray-500">Guest Mode</p>
             )}
-            <p className="text-xs text-gray-400">Hydration Champion 💧 (v1.5.3)</p>
+            <p className="text-xs text-gray-400">Hydration Champion 💧 (v1.5.4)</p>
           </div>
           <button
             onClick={() => editingProfile ? handleSaveProfile() : setEditingProfile(true)}
@@ -2861,14 +2861,18 @@ export default function App() {
       setTimeout(() => setStreakToast(null), 4000);
     }
   }, [streak]);
+
+  // Track if initial data load has completed
+  const hasInitiallyLoaded = useRef(false);
+
   // ============================================================================
-  // UNIFIED DATA FETCH - v1.5.2: Single coordinated fetch for stats AND history
-  // This prevents race conditions by ensuring both fetches complete together
+  // UNIFIED DATA FETCH - v1.5.4: Single coordinated fetch for stats AND history
+  // Added small delay to ensure auth state is fully settled before fetching
   // ============================================================================
   useEffect(() => {
     // Wait for auth to finish loading
     if (auth.loading) {
-      console.log('[SmartSip v1.5.2] Auth still loading, waiting...');
+      console.log('[SmartSip v1.5.4] Auth still loading, waiting...');
       return;
     }
 
@@ -2876,7 +2880,7 @@ export default function App() {
     const currentUserId = auth.userId || 'guest-local-user';
     const cacheBust = `_t=${Date.now()}`;
 
-    console.log(`[SmartSip v1.5.2] Auth ready! Fetching ALL data for user: ${currentUserId}, date: ${selectedDate}`);
+    console.log(`[SmartSip v1.5.4] Auth ready! Fetching ALL data for user: ${currentUserId}, date: ${selectedDate}`);
 
     const fetchAllData = async () => {
       try {
@@ -2889,7 +2893,7 @@ export default function App() {
         // Process stats
         if (statsRes.ok) {
           const statsData = await statsRes.json();
-          console.log(`[SmartSip v1.5.2] Stats: streak=${statsData.streak}, weeklyAvg=${statsData.weekly_average || 'N/A'}`);
+          console.log(`[SmartSip v1.5.4] Stats: streak=${statsData.streak}, weeklyAvg=${statsData.weekly_average || 'N/A'}`);
           setStreak(statsData.streak || 0);
           setStatsData(statsData);
         }
@@ -2897,7 +2901,7 @@ export default function App() {
         // Process history (TODAY's water logs)
         if (historyRes.ok) {
           const historyData = await historyRes.json();
-          console.log(`[SmartSip v1.5.2] History: total=${historyData.total_today}, logs=${historyData.logs?.length || 0}`);
+          console.log(`[SmartSip v1.5.4] History: total=${historyData.total_today}, logs=${historyData.logs?.length || 0}`);
           setTodayLogs(historyData.logs || []);
           setTotalWater(historyData.total_today || 0);
           if (historyData.historical_goal) setHistoricalGoal(historyData.historical_goal);
@@ -2905,15 +2909,18 @@ export default function App() {
         }
 
         setIsBackendConnected(true);
+        hasInitiallyLoaded.current = true;
       } catch (error) {
-        console.error('[SmartSip v1.5.2] Data fetch failed:', error);
+        console.error('[SmartSip v1.5.4] Data fetch failed:', error);
         setIsBackendConnected(false);
       } finally {
         setIsInitialDataLoaded(true);
       }
     };
 
-    fetchAllData();
+    // Small delay to ensure React state is fully settled after auth change
+    const timer = setTimeout(fetchAllData, 50);
+    return () => clearTimeout(timer);
   }, [auth.loading, auth.userId, selectedDate, goal]); // Re-fetch on any of these changes
 
   // ============================================================================

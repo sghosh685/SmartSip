@@ -2002,7 +2002,7 @@ const SettingsScreen = ({
             ) : (
               <p className="text-xs text-gray-500">Guest Mode</p>
             )}
-            <p className="text-xs text-gray-400">Hydration Champion 💧 (v1.5.7)</p>
+            <p className="text-xs text-gray-400">Hydration Champion 💧 (v1.5.8)</p>
           </div>
           <button
             onClick={() => editingProfile ? handleSaveProfile() : setEditingProfile(true)}
@@ -2870,90 +2870,85 @@ export default function App() {
   // UNIFIED DATA FETCH - v1.5.7: Prevents guest fetch from overwriting auth data
   // Tracks last fetched user to prevent auth state transition issues
   // ============================================================================
+  // ============================================================================
+  // UNIFIED DATA FETCH - v1.5.8: Use AbortController to cancel stale requests
+  // This definitively solves race conditions by aborting the previous fetch
+  // if the dependencies change (e.g. user ID updates from Guest -> User)
+  // ============================================================================
   const lastFetchedUserId = useRef(null);
 
   useEffect(() => {
     // Wait for auth to finish loading
     if (auth.loading) {
-      console.log('[SmartSip v1.5.7] Auth still loading, waiting...');
+      console.log('[SmartSip v1.5.8] Auth still loading, waiting...');
       return;
     }
 
+    const abortController = new AbortController();
     const currentUserId = auth.userId || 'guest-local-user';
 
-    // CRITICAL FIX: If we've already fetched for an authenticated user,
-    // don't allow a subsequent fetch for guest to overwrite that data
+    // Guard: If we've already fetched for an authenticated user, block guest fallback
+    // This is an extra safety layer on top of AbortController
     if (lastFetchedUserId.current &&
       lastFetchedUserId.current !== 'guest-local-user' &&
       currentUserId === 'guest-local-user') {
-      console.log('[SmartSip v1.5.7] Blocking guest fetch - already have authenticated user data');
+      console.log('[SmartSip v1.5.8] Blocking guest fetch - already have authenticated user data');
       return;
     }
 
-    let isMounted = true;
     const cacheBust = `_t=${Date.now()}`;
-
-    console.log(`[SmartSip v1.5.7] Auth ready! Fetching ALL data for user: ${currentUserId}, date: ${selectedDate}`);
+    console.log(`[SmartSip v1.5.8] Auth ready! Fetching ALL data for user: ${currentUserId}`);
 
     const fetchAllData = async () => {
       try {
-        // Parallel fetch for better performance
         const [statsRes, historyRes] = await Promise.all([
-          fetch(`${API_URL}/stats/${currentUserId}?days=30&goal=${goal}&client_date=${getLocalDateString()}&${cacheBust}`),
-          fetch(`${API_URL}/history/${currentUserId}?date=${selectedDate}&${cacheBust}`)
+          fetch(`${API_URL}/stats/${currentUserId}?days=30&goal=${goal}&client_date=${getLocalDateString()}&${cacheBust}`, {
+            signal: abortController.signal
+          }),
+          fetch(`${API_URL}/history/${currentUserId}?date=${selectedDate}&${cacheBust}`, {
+            signal: abortController.signal
+          })
         ]);
-
-        // Only update state if component is still mounted
-        if (!isMounted) {
-          console.log('[SmartSip v1.5.7] Component unmounted, skipping state update');
-          return;
-        }
 
         // Process stats
         if (statsRes.ok) {
           const statsData = await statsRes.json();
-          console.log(`[SmartSip v1.5.7] Stats received: streak=${statsData.streak}`);
-          if (isMounted) {
-            setStreak(statsData.streak || 0);
-            setStatsData(statsData);
-            console.log(`[SmartSip v1.5.7] Streak state set to: ${statsData.streak || 0}`);
-          }
+          console.log(`[SmartSip v1.5.8] Stats received: streak=${statsData.streak}`);
+          setStreak(statsData.streak || 0);
+          setStatsData(statsData);
         }
 
-        // Process history (TODAY's water logs)
+        // Process history
         if (historyRes.ok) {
           const historyData = await historyRes.json();
-          console.log(`[SmartSip v1.5.7] History received: total=${historyData.total_today}, logs=${historyData.logs?.length || 0}`);
-          if (isMounted) {
-            setTodayLogs(historyData.logs || []);
-            setTotalWater(historyData.total_today || 0);
-            console.log(`[SmartSip v1.5.7] TotalWater state set to: ${historyData.total_today || 0}`);
-            if (historyData.historical_goal) setHistoricalGoal(historyData.historical_goal);
-            else setHistoricalGoal(null);
-          }
+          console.log(`[SmartSip v1.5.8] History received: total=${historyData.total_today}, logs=${historyData.logs?.length || 0}`);
+          setTodayLogs(historyData.logs || []);
+          setTotalWater(historyData.total_today || 0);
+          if (historyData.historical_goal) setHistoricalGoal(historyData.historical_goal);
+          else setHistoricalGoal(null);
         }
 
-        if (isMounted) {
-          setIsBackendConnected(true);
-          hasInitiallyLoaded.current = true;
-          lastFetchedUserId.current = currentUserId; // Track which user we fetched for
-          setIsInitialDataLoaded(true);
-          console.log(`[SmartSip v1.5.7] Data load complete for user: ${currentUserId}`);
-        }
+        setIsBackendConnected(true);
+        hasInitiallyLoaded.current = true;
+        lastFetchedUserId.current = currentUserId;
+        setIsInitialDataLoaded(true);
+
       } catch (error) {
-        console.error('[SmartSip v1.5.7] Data fetch failed:', error);
-        if (isMounted) {
+        if (error.name === 'AbortError') {
+          console.log(`[SmartSip v1.5.8] Fetch aborted for user: ${currentUserId} (Request cancelled)`);
+        } else {
+          console.error('[SmartSip v1.5.8] Data fetch failed:', error);
           setIsBackendConnected(false);
           setIsInitialDataLoaded(true);
         }
       }
     };
 
-    // Execute immediately (no setTimeout delay)
     fetchAllData();
 
+    // Cleanup: Abort any pending requests when dependencies change
     return () => {
-      isMounted = false;
+      abortController.abort();
     };
   }, [auth.loading, auth.userId, selectedDate, goal]); // Re-fetch on any of these changes
 

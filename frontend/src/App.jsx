@@ -2002,7 +2002,7 @@ const SettingsScreen = ({
             ) : (
               <p className="text-xs text-gray-500">Guest Mode</p>
             )}
-            <p className="text-xs text-gray-400">Hydration Champion 💧 (v1.5.1)</p>
+            <p className="text-xs text-gray-400">Hydration Champion 💧 (v1.5.2)</p>
           </div>
           <button
             onClick={() => editingProfile ? handleSaveProfile() : setEditingProfile(true)}
@@ -2861,48 +2861,60 @@ export default function App() {
       setTimeout(() => setStreakToast(null), 4000);
     }
   }, [streak]);
-
   // ============================================================================
-  // STATS FETCH - Runs once when auth is ready (streak, weeklyAvg, etc.)
-  // v1.5.0: Separated from history fetch to fix stale closure bug
+  // UNIFIED DATA FETCH - v1.5.2: Single coordinated fetch for stats AND history
+  // This prevents race conditions by ensuring both fetches complete together
   // ============================================================================
   useEffect(() => {
     // Wait for auth to finish loading
     if (auth.loading) {
-      console.log('[SmartSip v1.5.0] Auth still loading, waiting...');
+      console.log('[SmartSip v1.5.2] Auth still loading, waiting...');
       return;
     }
 
-    // Determine user ID (authenticated or guest)
+    // Use USER_ID which is already computed from auth.userId
     const currentUserId = auth.userId || 'guest-local-user';
     const cacheBust = `_t=${Date.now()}`;
 
-    console.log(`[SmartSip v1.5.0] Auth ready! Fetching stats for USER: ${currentUserId}`);
+    console.log(`[SmartSip v1.5.2] Auth ready! Fetching ALL data for user: ${currentUserId}, date: ${selectedDate}`);
 
-    // Fetch stats only (history is handled by selectedDate effect below)
-    const fetchStatsData = async () => {
+    const fetchAllData = async () => {
       try {
-        const statsRes = await fetch(
-          `${API_URL}/stats/${currentUserId}?days=30&goal=${goal}&client_date=${getLocalDateString()}&${cacheBust}`
-        );
+        // Parallel fetch for better performance
+        const [statsRes, historyRes] = await Promise.all([
+          fetch(`${API_URL}/stats/${currentUserId}?days=30&goal=${goal}&client_date=${getLocalDateString()}&${cacheBust}`),
+          fetch(`${API_URL}/history/${currentUserId}?date=${selectedDate}&${cacheBust}`)
+        ]);
 
+        // Process stats
         if (statsRes.ok) {
-          const data = await statsRes.json();
-          console.log(`[SmartSip v1.5.0] Stats loaded: streak=${data.streak}`);
-          setStreak(data.streak || 0);
-          setStatsData(data);
+          const statsData = await statsRes.json();
+          console.log(`[SmartSip v1.5.2] Stats: streak=${statsData.streak}, weeklyAvg=${statsData.weekly_average || 'N/A'}`);
+          setStreak(statsData.streak || 0);
+          setStatsData(statsData);
         }
+
+        // Process history (TODAY's water logs)
+        if (historyRes.ok) {
+          const historyData = await historyRes.json();
+          console.log(`[SmartSip v1.5.2] History: total=${historyData.total_today}, logs=${historyData.logs?.length || 0}`);
+          setTodayLogs(historyData.logs || []);
+          setTotalWater(historyData.total_today || 0);
+          if (historyData.historical_goal) setHistoricalGoal(historyData.historical_goal);
+          else setHistoricalGoal(null);
+        }
+
         setIsBackendConnected(true);
       } catch (error) {
-        console.log('[SmartSip v1.5.0] Stats fetch failed:', error);
+        console.error('[SmartSip v1.5.2] Data fetch failed:', error);
         setIsBackendConnected(false);
       } finally {
         setIsInitialDataLoaded(true);
       }
     };
 
-    fetchStatsData();
-  }, [auth.loading, auth.userId, goal]);
+    fetchAllData();
+  }, [auth.loading, auth.userId, selectedDate, goal]); // Re-fetch on any of these changes
 
   // ============================================================================
   // BADGE RECOVERY - Automatically unlock streak-based badges on load
@@ -2925,42 +2937,6 @@ export default function App() {
       }
     }
   }, [streak]); // Only run when streak changes
-
-  // ============================================================================
-  // HISTORY FETCH - Runs when selectedDate changes (logs, totalWater, etc.)
-  // v1.5.0: This is the FIX for BUG-001 - data now refetches on date change
-  // ============================================================================
-  useEffect(() => {
-    // Wait for auth to finish loading
-    if (auth.loading) return;
-
-    const currentUserId = auth.userId || 'guest-local-user';
-    const cacheBust = `_t=${Date.now()}`;
-
-    console.log(`[SmartSip v1.5.0] Fetching history for date: ${selectedDate}`);
-
-    const fetchHistoryData = async () => {
-      try {
-        const historyRes = await fetch(
-          `${API_URL}/history/${currentUserId}?date=${selectedDate}&${cacheBust}`
-        );
-
-        if (historyRes.ok) {
-          const data = await historyRes.json();
-          console.log(`[SmartSip v1.5.0] History loaded: total=${data.total_today}, logs=${data.logs?.length || 0}`);
-          setTodayLogs(data.logs || []);
-          setTotalWater(data.total_today || 0);
-          if (data.historical_goal) setHistoricalGoal(data.historical_goal);
-          else setHistoricalGoal(null);
-          setIsBackendConnected(true);
-        }
-      } catch (error) {
-        console.log('[SmartSip v1.5.0] History fetch failed:', error);
-      }
-    };
-
-    fetchHistoryData();
-  }, [auth.loading, auth.userId, selectedDate]); // Re-fetch when date changes!
 
   // NEW: Sync effective goal to backend when conditions change
   // This ensures that if you raise your goal (e.g. Hot Weather), the backend

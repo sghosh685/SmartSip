@@ -199,8 +199,9 @@ const GardenVisualizer = ({ totalWater, goal, percentage, isDarkMode, showAddAni
     if (pct < 10) return { icon: Circle, color: 'text-amber-700', scale: 0.5, label: 'Seed' }; // 0-9%
     if (pct < 30) return { icon: Sprout, color: 'text-green-400', scale: 0.7, label: 'Sprout' }; // 10-29%
     if (pct < 60) return { icon: Leaf, color: 'text-green-500', scale: 0.9, label: 'Sapling' }; // 30-59%
-    if (pct < 90) return { icon: Leaf, color: 'text-emerald-500', scale: 1.1, label: 'Tree' }; // 60-89% (Would use Tree icon if avail, reusing Leaf for now with larger scale)
-    return { icon: Flower, color: 'text-pink-500', scale: 1.3, label: 'Bloom' }; // 90-100%
+    if (pct < 90) return { icon: Leaf, color: 'text-emerald-500', scale: 1.1, label: 'Tree' }; // 60-89%
+    if (pct < 100) return { icon: Flower, color: 'text-pink-500', scale: 1.3, label: 'Bloom' }; // 90-99%
+    return { icon: Flower, color: 'text-yellow-400', scale: 1.5, label: 'Flourishing!' }; // 100%+
   };
 
   const stage = getGrowthStage(percentage);
@@ -2001,7 +2002,7 @@ const SettingsScreen = ({
             ) : (
               <p className="text-xs text-gray-500">Guest Mode</p>
             )}
-            <p className="text-xs text-gray-400">Hydration Champion 💧 (v1.5.0)</p>
+            <p className="text-xs text-gray-400">Hydration Champion 💧 (v1.5.1)</p>
           </div>
           <button
             onClick={() => editingProfile ? handleSaveProfile() : setEditingProfile(true)}
@@ -2707,13 +2708,29 @@ export default function App() {
   // BADGE SYSTEM: Gamification (persisted to localStorage)
   const [unlockedBadges, setUnlockedBadges] = useState(() => {
     const saved = localStorage.getItem('unlockedBadges');
-    return saved ? JSON.parse(saved) : [];
+    try {
+      const parsed = saved ? JSON.parse(saved) : [];
+      // Deduplicate on load
+      return [...new Set(parsed)];
+    } catch {
+      return [];
+    }
   });
   const [badgeToast, setBadgeToast] = useState(null);
 
-  // Save badges when they change
+  // Save badges when they change (with protection against accidental overwrite)
   useEffect(() => {
-    localStorage.setItem('unlockedBadges', JSON.stringify(unlockedBadges));
+    // Never overwrite existing badges with empty array (protection against race conditions)
+    if (unlockedBadges.length === 0) {
+      const existing = localStorage.getItem('unlockedBadges');
+      if (existing && JSON.parse(existing).length > 0) {
+        console.log('[SmartSip] Prevented badge overwrite - keeping existing badges');
+        return;
+      }
+    }
+    // Deduplicate before saving
+    const unique = [...new Set(unlockedBadges)];
+    localStorage.setItem('unlockedBadges', JSON.stringify(unique));
   }, [unlockedBadges]);
 
   // Confetti celebration tracking
@@ -2888,6 +2905,28 @@ export default function App() {
   }, [auth.loading, auth.userId, goal]);
 
   // ============================================================================
+  // BADGE RECOVERY - Automatically unlock streak-based badges on load
+  // v1.5.0: Prevents badge loss by re-checking milestone conditions
+  // ============================================================================
+  useEffect(() => {
+    if (streak > 0) {
+      // Check streak-based badges
+      const streakBadges = [];
+      if (streak >= 7 && !unlockedBadges.includes('week_warrior')) {
+        streakBadges.push('week_warrior');
+      }
+      if (streak >= 30 && !unlockedBadges.includes('month_master')) {
+        streakBadges.push('month_master');
+      }
+
+      if (streakBadges.length > 0) {
+        console.log(`[SmartSip] Badge recovery: Adding ${streakBadges.join(', ')}`);
+        setUnlockedBadges(prev => [...new Set([...prev, ...streakBadges])]);
+      }
+    }
+  }, [streak]); // Only run when streak changes
+
+  // ============================================================================
   // HISTORY FETCH - Runs when selectedDate changes (logs, totalWater, etc.)
   // v1.5.0: This is the FIX for BUG-001 - data now refetches on date change
   // ============================================================================
@@ -3037,8 +3076,8 @@ export default function App() {
       );
 
       if (newlyUnlocked.length > 0) {
-        // Unlock the badges
-        setUnlockedBadges(prev => [...prev, ...newlyUnlocked.map(b => b.id)]);
+        // Unlock the badges (use Set to prevent duplicates)
+        setUnlockedBadges(prev => [...new Set([...prev, ...newlyUnlocked.map(b => b.id)])]);
 
         // Show badge toast for the first one (queue others if needed)
         setBadgeToast(newlyUnlocked[0]);

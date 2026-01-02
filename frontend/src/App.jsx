@@ -160,6 +160,16 @@ const GlassVisualizer = ({ totalWater, goal, percentage, isDarkMode, showAddAnim
             {percentage.toFixed(0)}%
           </span>
         </div>
+
+        {/* OVERFLOW EFFECT: Water droplets spilling when > 100% */}
+        {percentage >= 100 && (
+          <div className="absolute -top-2 left-0 right-0 flex justify-center z-30 pointer-events-none">
+            <div className="absolute -top-4 left-6 w-3 h-3 bg-blue-400 rounded-full animate-bounce opacity-80" style={{ animationDelay: '0s' }} />
+            <div className="absolute -top-6 right-8 w-2 h-2 bg-blue-500 rounded-full animate-bounce opacity-70" style={{ animationDelay: '0.3s' }} />
+            <div className="absolute -top-3 left-1/2 w-2 h-2 bg-blue-400 rounded-full animate-bounce opacity-60" style={{ animationDelay: '0.6s' }} />
+            <div className="absolute -top-5 right-12 w-2.5 h-2.5 bg-blue-300 rounded-full animate-bounce opacity-80" style={{ animationDelay: '0.9s' }} />
+          </div>
+        )}
       </div>
 
       {/* Stats Below Glass */}
@@ -334,7 +344,7 @@ const HomeScreen = ({
   // Fallback to baseGoal only if no history exists.
   const displayGoal = isViewingToday ? goal : (historicalGoal || baseGoal);
 
-  const percentage = Math.min((totalWater / displayGoal) * 100, 100);
+  const percentage = (totalWater / displayGoal) * 100; // Allow > 100% for display
   const circumference = 2 * Math.PI * 48;
   const offset = circumference - (percentage / 100) * circumference;
   const [isEditing, setIsEditing] = useState(false);
@@ -884,7 +894,7 @@ const HomeScreen = ({
 
 // --- SCREEN 2: ALARM ---
 const AlarmScreen = ({ totalWater, goal, logs }) => {
-  const percentage = Math.min((totalWater / goal) * 100, 100);
+  const percentage = (totalWater / goal) * 100; // Allow > 100%
 
   // Convert timestamp if it comes from DB (ISO string) or local state
   const formatTime = (timeStr) => {
@@ -1991,7 +2001,7 @@ const SettingsScreen = ({
             ) : (
               <p className="text-xs text-gray-500">Guest Mode</p>
             )}
-            <p className="text-xs text-gray-400">Hydration Champion 💧 (v1.4.1)</p>
+            <p className="text-xs text-gray-400">Hydration Champion 💧 (v1.5.0)</p>
           </div>
           <button
             onClick={() => editingProfile ? handleSaveProfile() : setEditingProfile(true)}
@@ -2836,13 +2846,13 @@ export default function App() {
   }, [streak]);
 
   // ============================================================================
-  // INITIAL DATA LOAD - Simple, guaranteed fetch when auth is ready
-  // Replaces previous fragile transition detection pattern
+  // STATS FETCH - Runs once when auth is ready (streak, weeklyAvg, etc.)
+  // v1.5.0: Separated from history fetch to fix stale closure bug
   // ============================================================================
   useEffect(() => {
     // Wait for auth to finish loading
     if (auth.loading) {
-      console.log('[SmartSip v1.4.0] Auth still loading, waiting...');
+      console.log('[SmartSip v1.5.0] Auth still loading, waiting...');
       return;
     }
 
@@ -2850,42 +2860,68 @@ export default function App() {
     const currentUserId = auth.userId || 'guest-local-user';
     const cacheBust = `_t=${Date.now()}`;
 
-    console.log(`[SmartSip v1.4.0] Auth ready! Fetching data for USER: ${currentUserId}`);
+    console.log(`[SmartSip v1.5.0] Auth ready! Fetching stats for USER: ${currentUserId}`);
 
-    // Single, unified data fetch
-    const fetchInitialData = async () => {
+    // Fetch stats only (history is handled by selectedDate effect below)
+    const fetchStatsData = async () => {
       try {
-        // Parallel fetch for better performance
-        const [historyRes, statsRes] = await Promise.all([
-          fetch(`${API_URL}/history/${currentUserId}?date=${selectedDate}&${cacheBust}`),
-          fetch(`${API_URL}/stats/${currentUserId}?days=30&goal=${goal}&client_date=${getLocalDateString()}&${cacheBust}`)
-        ]);
-
-        if (historyRes.ok) {
-          const data = await historyRes.json();
-          console.log(`[SmartSip] Loaded: total=${data.total_today}, logs=${data.logs?.length || 0}`);
-          setTodayLogs(data.logs || []);
-          setTotalWater(data.total_today || 0);
-          if (data.historical_goal) setHistoricalGoal(data.historical_goal);
-          else setHistoricalGoal(null);
-          setIsBackendConnected(true);
-        }
+        const statsRes = await fetch(
+          `${API_URL}/stats/${currentUserId}?days=30&goal=${goal}&client_date=${getLocalDateString()}&${cacheBust}`
+        );
 
         if (statsRes.ok) {
-          const statsData = await statsRes.json();
-          console.log(`[SmartSip] Loaded: streak=${statsData.streak}`);
-          setStreak(statsData.streak || 0);
+          const data = await statsRes.json();
+          console.log(`[SmartSip v1.5.0] Stats loaded: streak=${data.streak}`);
+          setStreak(data.streak || 0);
+          setStatsData(data);
         }
+        setIsBackendConnected(true);
       } catch (error) {
-        console.log('[SmartSip] Initial fetch failed:', error);
+        console.log('[SmartSip v1.5.0] Stats fetch failed:', error);
         setIsBackendConnected(false);
       } finally {
         setIsInitialDataLoaded(true);
       }
     };
 
-    fetchInitialData();
-  }, [auth.loading, auth.userId]); // Only re-fetch when auth state changes
+    fetchStatsData();
+  }, [auth.loading, auth.userId, goal]);
+
+  // ============================================================================
+  // HISTORY FETCH - Runs when selectedDate changes (logs, totalWater, etc.)
+  // v1.5.0: This is the FIX for BUG-001 - data now refetches on date change
+  // ============================================================================
+  useEffect(() => {
+    // Wait for auth to finish loading
+    if (auth.loading) return;
+
+    const currentUserId = auth.userId || 'guest-local-user';
+    const cacheBust = `_t=${Date.now()}`;
+
+    console.log(`[SmartSip v1.5.0] Fetching history for date: ${selectedDate}`);
+
+    const fetchHistoryData = async () => {
+      try {
+        const historyRes = await fetch(
+          `${API_URL}/history/${currentUserId}?date=${selectedDate}&${cacheBust}`
+        );
+
+        if (historyRes.ok) {
+          const data = await historyRes.json();
+          console.log(`[SmartSip v1.5.0] History loaded: total=${data.total_today}, logs=${data.logs?.length || 0}`);
+          setTodayLogs(data.logs || []);
+          setTotalWater(data.total_today || 0);
+          if (data.historical_goal) setHistoricalGoal(data.historical_goal);
+          else setHistoricalGoal(null);
+          setIsBackendConnected(true);
+        }
+      } catch (error) {
+        console.log('[SmartSip v1.5.0] History fetch failed:', error);
+      }
+    };
+
+    fetchHistoryData();
+  }, [auth.loading, auth.userId, selectedDate]); // Re-fetch when date changes!
 
   // NEW: Sync effective goal to backend when conditions change
   // This ensures that if you raise your goal (e.g. Hot Weather), the backend
@@ -3221,7 +3257,7 @@ export default function App() {
               />
             )}
           </div>
-          <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} onQuickAdd={() => handleAddWater(drinkAmount)} isDarkMode={isDarkMode} />
+          <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} onQuickAdd={() => { setActiveTab('home'); handleAddWater(drinkAmount); }} isDarkMode={isDarkMode} />
         </div>
         <style>{`
         .scrollbar-hide::-webkit-scrollbar { display: none; }

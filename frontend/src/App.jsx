@@ -2002,7 +2002,7 @@ const SettingsScreen = ({
             ) : (
               <p className="text-xs text-gray-500">Guest Mode</p>
             )}
-            <p className="text-xs text-gray-400">Hydration Champion 💧 (v1.5.2)</p>
+            <p className="text-xs text-gray-400">Hydration Champion 💧 (v1.5.3)</p>
           </div>
           <button
             onClick={() => editingProfile ? handleSaveProfile() : setEditingProfile(true)}
@@ -2600,7 +2600,8 @@ export default function App() {
     localStorage.setItem('theme', theme);
   }, [theme]);
 
-  // Fetch full stats (charts, weekly avg)
+  // Fetch full stats (charts, weekly avg) - LEGACY: Now only used for manual refresh
+  // v1.5.3: Removed auto-trigger useEffect to prevent race with unified fetch
   const fetchStats = async () => {
     try {
       // Default to 7 days for dashboard view
@@ -2616,12 +2617,11 @@ export default function App() {
     }
   };
 
-  useEffect(() => {
-    // Don't fetch until auth is done loading to ensure correct USER_ID
-    if (!auth.loading) {
-      fetchStats();
-    }
-  }, [logs, goal, USER_ID, auth.loading]); // Re-fetch when logs, goal, or user changes
+  // REMOVED: This useEffect was causing race conditions with unified fetch
+  // Stats are now fetched by the unified fetch effect in v1.5.2+
+  // useEffect(() => {
+  //   if (!auth.loading) { fetchStats(); }
+  // }, [logs, goal, USER_ID, auth.loading]);
 
   // Dynamic userName with ability to override in Settings
   // Load from localStorage if saved, otherwise use email-based default

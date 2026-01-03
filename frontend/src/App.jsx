@@ -3199,8 +3199,8 @@ export default function App() {
           user_id: USER_ID,
           amount,
           // CRITICAL: For today, record the effective smart goal.
-          // For backdated logs, use base goal to avoid polluting history with today's conditions.
-          goal: isBackdating ? goal : effectiveGoal,
+          // For backdated logs, use globalDefaultGoal to avoid polluting history with today's conditions.
+          goal: isBackdating ? globalDefaultGoal : effectiveGoal,
           // ALWAYS send client's local date to prevent server UTC mismatch
           date: isBackdating ? selectedDate : getLocalDateString(),
           // For today's logs, send exact client timestamp for correct timezone display

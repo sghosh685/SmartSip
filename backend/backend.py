@@ -570,8 +570,16 @@ def log_intake(req: LogRequest, db: Session = Depends(get_db)):
     }
 
 def db_get_snapshot_goal(db: Session, user_id: str, date_str: str):
-    """Retrieve the locked goal for a specific date from snapshots."""
-    # 1. Try to find exact snapshot
+    """Retrieve the locked goal for a specific date from snapshots.
+    
+    v1.7.0 FIX: Removed 'last known goal' fallback. If no snapshot exists,
+    return the constant global default (2500). This prevents historical edits
+    from inadvertently propagating forward to dates without explicit snapshots.
+    
+    The frontend should request goal updates with the user's current preference,
+    not rely on backend guessing from historical data.
+    """
+    # Try to find exact snapshot for this date
     snapshot = db.query(models.DailySnapshot).filter(
         models.DailySnapshot.user_id == user_id,
         models.DailySnapshot.date == date_str
@@ -580,13 +588,9 @@ def db_get_snapshot_goal(db: Session, user_id: str, date_str: str):
     if snapshot:
         return snapshot.goal_for_day
     
-    # 2. Find LAST KNOWN goal
-    last_snapshot = db.query(models.DailySnapshot).filter(
-        models.DailySnapshot.user_id == user_id,
-        models.DailySnapshot.date < date_str
-    ).order_by(models.DailySnapshot.date.desc()).first()
-    
-    return last_snapshot.goal_for_day if last_snapshot else 2500
+    # No snapshot exists - return constant default
+    # The frontend is the source of truth for the user's current goal preference
+    return 2500
 
 class UpdateGoalRequest(BaseModel):
     user_id: str

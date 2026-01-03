@@ -311,8 +311,8 @@ const LoginModal = ({ isOpen, onClose, onLogin }) => {
 const HomeScreen = ({
   totalWater,
   goal,
-  baseGoal,
-  setGoal,
+  globalDefaultGoal,
+  setGlobalDefaultGoal,
   goalData,
   drinkAmount,
   setDrinkAmount,
@@ -341,14 +341,54 @@ const HomeScreen = ({
   const todayStr = getLocalDateString(today);
   const isViewingToday = selectedDate === todayStr;
 
-  // CRITICAL: Use effectiveGoal for TODAY only, historicalGoal (snapshot) for past dates
-  // Fallback to baseGoal only if no history exists.
-  const displayGoal = isViewingToday ? goal : (historicalGoal || baseGoal);
+  // CRITICAL (Three-Tier Goal Architecture v1.8.0):
+  // - TODAY: Use effectiveGoal (globalDefaultGoal + conditions)
+  // - PAST: Use historicalGoal (from DailySnapshot) or fallback to globalDefaultGoal
+  const displayGoal = isViewingToday ? goal : (historicalGoal || globalDefaultGoal);
 
   const percentage = (totalWater / displayGoal) * 100; // Allow > 100% for display
   const circumference = 2 * Math.PI * 48;
   const offset = circumference - (percentage / 100) * circumference;
   const [isEditing, setIsEditing] = useState(false);
+  const [editGoalValue, setEditGoalValue] = useState(0); // NEW: Local state for editing to prevent partial global updates
+
+  const handleToggleEditGoal = async () => {
+    if (isEditing) {
+      // SAVE LOGIC
+      const newGoal = Number(editGoalValue);
+
+      // 1. Always update Backend Snapshot
+      try {
+        await fetch(`${API_URL}/update-goal`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user_id: userContext.userId, date: selectedDate, goal: newGoal })
+        });
+      } catch (e) {
+        console.error("Failed to update goal backend", e);
+      }
+
+      // 2. Conditional State Update
+      if (isViewingToday) {
+        // If editing TODAY, we update the Global App State
+        // This persists to localStorage and becomes the default for future days
+        setGlobalDefaultGoal(newGoal);
+      } else {
+        // If editing PAST, we ONLY update the historical display
+        // We do NOT call setGlobalDefaultGoal(), so the global default remains untouched.
+        // v1.7.0: Backend already updated via /update-goal. Local state update is sufficient.
+        // Stats/streak will refresh on next navigation or water log action.
+        setHistoricalGoal(newGoal);
+      }
+
+      setIsEditing(false);
+    } else {
+      // START EDITING
+      setEditGoalValue(displayGoal);
+      setIsEditing(true);
+    }
+  };
+
   const [showAddAnimation, setShowAddAnimation] = useState(false);
   const [lastAddedAmount, setLastAddedAmount] = useState(0);
 
@@ -444,7 +484,10 @@ const HomeScreen = ({
                   <h3 className={`text-lg font-bold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>Daily Target</h3>
                   <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{selectedDate === todayStr ? `Today, ${new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}` : new Date(selectedDate + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</p>
                 </div>
-                <button onClick={() => setIsEditing(!isEditing)} className={`p-2 rounded-full transition-colors ${isDarkMode ? 'hover:bg-gray-800 text-gray-500' : 'hover:bg-gray-100 text-gray-400'}`}>
+                <button
+                  onClick={() => handleToggleEditGoal()}
+                  className={`p-2 rounded-full transition-colors ${isDarkMode ? 'hover:bg-gray-800 text-gray-500' : 'hover:bg-gray-100 text-gray-400'}`}
+                >
                   {isEditing ? <Check size={18} className="text-green-500" /> : <Edit2 size={18} />}
                 </button>
               </div>
@@ -479,14 +522,21 @@ const HomeScreen = ({
               {isEditing ? (
                 <div className="mb-4 space-y-4 w-full animate-in fade-in slide-in-from-top-4 bg-gray-50/5 p-4 rounded-2xl">
                   <div>
-                    <label className="text-xs text-gray-400 uppercase font-bold mb-1 block">Base Goal Amount</label>
+                    <label className="text-xs text-gray-400 uppercase font-bold mb-1 block">
+                      {isViewingToday ? "Base Goal Amount (Future)" : "Adjust Goal for this Day Only"}
+                    </label>
                     <div className="flex items-center gap-2">
-                      <input type="number" value={baseGoal} onChange={(e) => setGoal(Number(e.target.value))} className={`w-full p-2 rounded-lg border focus:outline-none font-bold text-lg ${isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200 text-gray-800'}`} />
+                      <input
+                        type="number"
+                        value={editGoalValue}
+                        onChange={(e) => setEditGoalValue(Number(e.target.value))}
+                        className={`w-full p-2 rounded-lg border focus:outline-none font-bold text-lg ${isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200 text-gray-800'}`}
+                      />
                       <span className="text-sm text-gray-500">ml</span>
                     </div>
-                    {goalData && goalData.totalBonus > 0 && (
+                    {goalData && goalData.totalBonus > 0 && isViewingToday && (
                       <p className={`text-xs mt-2 ${isDarkMode ? 'text-cyan-400' : 'text-cyan-600'}`}>
-                        + {goalData.totalBonus}ml from conditions = {goal}ml today
+                        + {goalData.totalBonus}ml from conditions = {Number(editGoalValue) + goalData.totalBonus}ml today
                       </p>
                     )}
                   </div>
@@ -894,8 +944,8 @@ const HomeScreen = ({
 };
 
 // --- SCREEN 2: ALARM ---
-const AlarmScreen = ({ totalWater, goal, logs }) => {
-  const percentage = (totalWater / goal) * 100; // Allow > 100%
+const AlarmScreen = ({ totalWater, globalDefaultGoal, logs }) => {
+  const percentage = (totalWater / globalDefaultGoal) * 100; // Allow > 100%
 
   // Convert timestamp if it comes from DB (ISO string) or local state
   const formatTime = (timeStr) => {
@@ -920,7 +970,7 @@ const AlarmScreen = ({ totalWater, goal, logs }) => {
             <div className="absolute w-full bg-indigo-300 opacity-60 wave-animation-delayed transition-all duration-1000 ease-in-out" style={{ height: `${Math.max(0, percentage - 5)}%` }}></div>
             <div className="absolute inset-0 flex flex-col items-center justify-center z-10">
               <span className="text-3xl font-bold text-gray-800 drop-shadow-sm">{totalWater}</span>
-              <span className="text-lg text-gray-500">/{goal}ml</span>
+              <span className="text-lg text-gray-500">/{globalDefaultGoal}ml</span>
             </div>
           </div>
         </div>
@@ -949,7 +999,7 @@ const AlarmScreen = ({ totalWater, goal, logs }) => {
 };
 
 // --- SCREEN 3: STATS ---
-const StatsScreen = ({ logs, goal, isDarkMode, unlockedBadges = [], userId }) => {
+const StatsScreen = ({ logs, globalDefaultGoal, isDarkMode, unlockedBadges = [], userId }) => {
   const [viewMode, setViewMode] = useState('Week');
   const [statsData, setStatsData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -983,7 +1033,7 @@ const StatsScreen = ({ logs, goal, isDarkMode, unlockedBadges = [], userId }) =>
         'calendar': 365, 'Month': 30, 'Year': 365
       };
       const days = daysMap[viewMode] || 7;
-      const response = await fetch(`${API_URL}/stats/${userId}?days=${days}&goal=${goal}&client_date=${getLocalDateString()}`);
+      const response = await fetch(`${API_URL}/stats/${userId}?days=${days}&goal=${globalDefaultGoal}&client_date=${getLocalDateString()}`);
       if (response.ok) {
         const data = await response.json();
         setStatsData(data);
@@ -1033,12 +1083,12 @@ const StatsScreen = ({ logs, goal, isDarkMode, unlockedBadges = [], userId }) =>
     return statsData.daily.map(d => ({
       date: d.date,
       total: d.total,
-      intensity: Math.min(d.total / goal, 1) // 0-1 scale
+      intensity: Math.min(d.total / globalDefaultGoal, 1) // 0-1 scale
     }));
   };
 
   const { totals: weekData, labels: weekLabels } = getWeekData();
-  const maxWeek = Math.max(...weekData, goal);
+  const maxWeek = Math.max(...weekData, globalDefaultGoal);
 
   // Handlers for Menu Actions
   const handleExport = () => {
@@ -1252,13 +1302,13 @@ const StatsScreen = ({ logs, goal, isDarkMode, unlockedBadges = [], userId }) =>
                     stroke="url(#dayProgressGradient)" strokeWidth="12" fill="none"
                     strokeLinecap="round"
                     strokeDasharray={`${2 * Math.PI * 70}`}
-                    strokeDashoffset={`${2 * Math.PI * 70 * (1 - Math.min((statsData?.daily?.[0]?.total || 0) / goal, 1))}`}
+                    strokeDashoffset={`${2 * Math.PI * 70 * (1 - Math.min((statsData?.daily?.[0]?.total || 0) / globalDefaultGoal, 1))}`}
                     className="transition-all duration-1000 ease-out"
                   />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>{Math.round((statsData?.daily?.[0]?.total || 0) / goal * 100)}%</span>
-                  <span className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{statsData?.daily?.[0]?.total || 0}/{goal}ml</span>
+                  <span className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>{Math.round((statsData?.daily?.[0]?.total || 0) / globalDefaultGoal * 100)}%</span>
+                  <span className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{statsData?.daily?.[0]?.total || 0}/{globalDefaultGoal}ml</span>
                   {(statsData?.daily?.[0]?.total || 0) === 0 && (
                     <span className={`text-[10px] mt-1 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-500'}`}>Tap + to start!</span>
                   )}
@@ -1266,9 +1316,9 @@ const StatsScreen = ({ logs, goal, isDarkMode, unlockedBadges = [], userId }) =>
               </div>
             </div>
             <div className="text-center text-sm text-gray-600">
-              {(statsData?.daily?.[0]?.total || 0) >= goal
+              {(statsData?.daily?.[0]?.total || 0) >= globalDefaultGoal
                 ? '🎉 Goal achieved! Great job staying hydrated!'
-                : `${goal - (statsData?.daily?.[0]?.total || 0)}ml remaining to reach your goal`
+                : `${globalDefaultGoal - (statsData?.daily?.[0]?.total || 0)}ml remaining to reach your goal`
               }
             </div>
           </div>
@@ -1549,7 +1599,7 @@ const StatsScreen = ({ logs, goal, isDarkMode, unlockedBadges = [], userId }) =>
                       for (let day = 1; day <= daysInMonth; day++) {
                         const dateStr = `${calendarMonth.getFullYear()}-${String(calendarMonth.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                         const dayData = statsData?.daily?.find(d => d.date === dateStr) || { total: 0 };
-                        const intensity = Math.min(dayData.total / goal, 1);
+                        const intensity = Math.min(dayData.total / globalDefaultGoal, 1);
                         const isToday = dateStr === getLocalDateString();
 
                         cells.push(
@@ -1558,7 +1608,7 @@ const StatsScreen = ({ logs, goal, isDarkMode, unlockedBadges = [], userId }) =>
                             className={`aspect-square rounded-lg flex items-center justify-center text-sm font-medium cursor-pointer transition-all
                             ${getHeatmapColor(intensity)} 
                             ${isToday ? 'ring-2 ring-indigo-500 ring-offset-1' : ''}
-                            ${dayData.total >= goal ? 'text-white' : 'text-gray-700'}
+                            ${dayData.total >= globalDefaultGoal ? 'text-white' : 'text-gray-700'}
                             hover:ring-2 hover:ring-indigo-300`}
                             title={`${dateStr}: ${dayData.total}ml (${Math.round(intensity * 100)}%)`}
                           >
@@ -1575,11 +1625,11 @@ const StatsScreen = ({ logs, goal, isDarkMode, unlockedBadges = [], userId }) =>
                     const monthEnd = `${calendarMonth.getFullYear()}-${String(calendarMonth.getMonth() + 1).padStart(2, '0')}-31`;
                     const monthData = statsData?.daily?.filter(d => d.date >= monthStart && d.date <= monthEnd) || [];
                     const monthTotal = monthData.reduce((sum, d) => sum + d.total, 0);
-                    const daysWithGoal = monthData.filter(d => d.total >= goal).length;
+                    const daysWithGoal = monthData.filter(d => d.total >= globalDefaultGoal).length;
                     return (
                       <div className="mt-4 text-center text-sm text-gray-600">
                         <span className="font-bold text-indigo-600">{(monthTotal / 1000).toFixed(1)}L</span> total •
-                        <span className="font-bold text-green-600"> {daysWithGoal} days</span> goal met
+                        <span className="font-bold text-green-600"> {daysWithGoal} days</span> globalDefaultGoal met
                       </div>
                     );
                   })()}
@@ -1606,7 +1656,7 @@ const StatsScreen = ({ logs, goal, isDarkMode, unlockedBadges = [], userId }) =>
                             {Array.from({ length: Math.min(daysInMonth, 35) }, (_, dayIdx) => {
                               const dateStr = `${calendarMonth.getFullYear()}-${String(monthIdx + 1).padStart(2, '0')}-${String(dayIdx + 1).padStart(2, '0')}`;
                               const dayData = statsData?.daily?.find(d => d.date === dateStr) || { total: 0 };
-                              const intensity = Math.min(dayData.total / goal, 1);
+                              const intensity = Math.min(dayData.total / globalDefaultGoal, 1);
 
                               return (
                                 <div
@@ -1632,7 +1682,7 @@ const StatsScreen = ({ logs, goal, isDarkMode, unlockedBadges = [], userId }) =>
                   <div key={i} className={`w-3 h-3 rounded-sm ${c}`} />
                 ))}
               </div>
-              <span>100%+ goal</span>
+              <span>100%+ globalDefaultGoal</span>
             </div>
           </div>
         )
@@ -1650,16 +1700,16 @@ const StatsScreen = ({ logs, goal, isDarkMode, unlockedBadges = [], userId }) =>
 
             // Day view insight
             if (viewMode === 'Day') {
-              if (todayTotal >= goal) return `🎉 Goal achieved! You've had ${todayTotal}ml today. Keep it up!`;
-              if (todayTotal > goal * 0.5) return `You're at ${Math.round(todayTotal / goal * 100)}% of your goal. ${goal - todayTotal}ml to go!`;
-              if (todayTotal > 0) return `Good start! ${todayTotal}ml logged. Drink ${goal - todayTotal}ml more to hit your goal.`;
+              if (todayTotal >= globalDefaultGoal) return `🎉 Goal achieved! You've had ${todayTotal}ml today. Keep it up!`;
+              if (todayTotal > globalDefaultGoal * 0.5) return `You're at ${Math.round(todayTotal / globalDefaultGoal * 100)}% of your goal. ${globalDefaultGoal - todayTotal}ml to go!`;
+              if (todayTotal > 0) return `Good start! ${todayTotal}ml logged. Drink ${globalDefaultGoal - todayTotal}ml more to hit your goal.`;
               return 'No water logged yet today. Start hydrating! 💧';
             }
 
             // Week view insight
             if (viewMode === 'Week') {
               const daysWithData = statsData?.daily?.filter(d => d.total > 0).length || 0;
-              if (weekAvg >= goal) return `Excellent week! Averaging ${weekAvg}ml/day, above your ${goal}ml goal. 🌟`;
+              if (weekAvg >= globalDefaultGoal) return `Excellent week! Averaging ${weekAvg}ml/day, above your ${globalDefaultGoal}ml globalDefaultGoal. 🌟`;
               if (daysWithData >= 5) return `You've logged ${daysWithData} days this week. Average: ${weekAvg}ml/day.`;
               return `${7 - daysWithData} days missing this week. Try to log consistently!`;
             }
@@ -1680,13 +1730,13 @@ const StatsScreen = ({ logs, goal, isDarkMode, unlockedBadges = [], userId }) =>
                     return `📅 ${calendarMonth.getFullYear()}: No data yet. Start tracking!`;
                   }
 
-                  const daysWithGoal = yearData.filter(d => d.total >= goal).length;
+                  const daysWithGoal = yearData.filter(d => d.total >= globalDefaultGoal).length;
                   const totalLiters = (yearData.reduce((sum, d) => sum + d.total, 0) / 1000).toFixed(1);
 
                   // Calculate monthly stats for best/worst
                   const monthStats = Array.from({ length: 12 }, (_, m) => {
                     const mData = yearData.filter(d => new Date(d.date + 'T12:00:00').getMonth() === m);
-                    const daysGoalMet = mData.filter(d => d.total >= goal).length;
+                    const daysGoalMet = mData.filter(d => d.total >= globalDefaultGoal).length;
                     return { month: m, total: mData.reduce((s, d) => s + d.total, 0), days: mData.length, goalDays: daysGoalMet };
                   }).filter(m => m.days > 0);
 
@@ -1719,7 +1769,7 @@ const StatsScreen = ({ logs, goal, isDarkMode, unlockedBadges = [], userId }) =>
                     return `📅 ${monthName}: No data yet. Start tracking!`;
                   }
 
-                  const daysWithGoal = monthData.filter(d => d.total >= goal).length;
+                  const daysWithGoal = monthData.filter(d => d.total >= globalDefaultGoal).length;
                   const monthTotal = (monthData.reduce((sum, d) => sum + d.total, 0) / 1000).toFixed(1);
                   const daysInMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 0).getDate();
 
@@ -1756,7 +1806,7 @@ const StatsScreen = ({ logs, goal, isDarkMode, unlockedBadges = [], userId }) =>
                     const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
                     const dayStats = Array.from({ length: 7 }, (_, i) => {
                       const dayData = monthData.filter(d => new Date(d.date + 'T12:00:00').getDay() === i);
-                      const goalMet = dayData.filter(d => d.total >= goal).length;
+                      const goalMet = dayData.filter(d => d.total >= globalDefaultGoal).length;
                       return { day: i, name: dayNames[i], count: dayData.length, goalMet, rate: dayData.length > 0 ? Math.round(goalMet / dayData.length * 100) : 0 };
                     }).filter(d => d.count > 0);
 
@@ -1807,12 +1857,12 @@ const StatsScreen = ({ logs, goal, isDarkMode, unlockedBadges = [], userId }) =>
                 }
 
                 const allGridData = statsData?.daily?.slice(0, gridDays) || [];
-                const daysWithGoal = gridData.filter(d => d.total >= goal).length;
+                const daysWithGoal = gridData.filter(d => d.total >= globalDefaultGoal).length;
                 const goalRate = Math.round(daysWithGoal / gridDays * 100);
 
                 // Calculate trend vs previous period
                 const prevData = statsData?.daily?.slice(gridDays, gridDays * 2).filter(d => d.total > 0) || [];
-                const prevDaysWithGoal = prevData.filter(d => d.total >= goal).length;
+                const prevDaysWithGoal = prevData.filter(d => d.total >= globalDefaultGoal).length;
                 const prevRate = prevData.length > 0 ? Math.round(prevDaysWithGoal / gridDays * 100) : 0;
                 const trendDiff = goalRate - prevRate;
 
@@ -1827,7 +1877,7 @@ const StatsScreen = ({ logs, goal, isDarkMode, unlockedBadges = [], userId }) =>
                   // 90 DAYS: Focus on trend + best streak
                   const trendIcon = trendDiff > 5 ? '📈 Improving!' : trendDiff < -5 ? '📉 Declining' : '➡️ Steady';
                   const limitedWarning = gridData.length < 30 ? ` • ⚠️ ${gridData.length} days tracked` : '';
-                  return `🎯 ${goalRate}% goal rate • ${trendIcon}${streak > 0 ? ` • 🔥 ${streak}-day streak` : ''}${limitedWarning}`;
+                  return `🎯 ${goalRate}% globalDefaultGoal rate • ${trendIcon}${streak > 0 ? ` • 🔥 ${streak}-day streak` : ''}${limitedWarning}`;
 
                 } else if (gridDays === 180) {
                   // 180 DAYS: Best/worst months
@@ -1839,7 +1889,7 @@ const StatsScreen = ({ logs, goal, isDarkMode, unlockedBadges = [], userId }) =>
                       const dayMonth = new Date(day.date + 'T12:00:00').getMonth();
                       return dayMonth === d.getMonth();
                     });
-                    return { name: mName, rate: mData.length > 0 ? Math.round(mData.filter(x => x.total >= goal).length / mData.length * 100) : 0, count: mData.length };
+                    return { name: mName, rate: mData.length > 0 ? Math.round(mData.filter(x => x.total >= globalDefaultGoal).length / mData.length * 100) : 0, count: mData.length };
                   }).filter(m => m.count > 0);
 
                   const best = monthStats.length > 0 ? monthStats.sort((a, b) => b.rate - a.rate)[0] : null;
@@ -1863,7 +1913,7 @@ const StatsScreen = ({ logs, goal, isDarkMode, unlockedBadges = [], userId }) =>
 
                   const best = monthStats.length > 0 ? monthStats.sort((a, b) => b.total - a.total)[0] : null;
 
-                  return `🎯 1 year: ${daysWithGoal} days goal met (${goalRate}%) • ${totalLiters}L total${best ? ` • Best: ${best.name} 🏆` : ''}`;
+                  return `🎯 1 year: ${daysWithGoal} days globalDefaultGoal met (${goalRate}%) • ${totalLiters}L total${best ? ` • Best: ${best.name} 🏆` : ''}`;
                 }
               }
             }
@@ -1879,8 +1929,8 @@ const StatsScreen = ({ logs, goal, isDarkMode, unlockedBadges = [], userId }) =>
 
 // --- SCREEN 4: SETTINGS ---
 const SettingsScreen = ({
-  goal,
-  setGoal,
+  globalDefaultGoal,
+  setGlobalDefaultGoal,
   drinkAmount,
   setDrinkAmount,
   userName,
@@ -1908,7 +1958,7 @@ const SettingsScreen = ({
 }) => {
   const [editingProfile, setEditingProfile] = useState(false);
   const [tempName, setTempName] = useState(userName);
-  const [tempGoal, setTempGoal] = useState(goal);
+  const [tempGoal, setTempGoal] = useState(globalDefaultGoal);
   const [tempDrink, setTempDrink] = useState(drinkAmount);
 
   // Time Input Refs for programmatically showing picker
@@ -1965,7 +2015,7 @@ const SettingsScreen = ({
 
   const handleSaveProfile = () => {
     setUserName(tempName);
-    setGoal(tempGoal);
+    setGlobalDefaultGoal(tempGoal);
     setDrinkAmount(tempDrink);
     setEditingProfile(false);
   };
@@ -2035,7 +2085,7 @@ const SettingsScreen = ({
                 <span className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>ml</span>
               </div>
             ) : (
-              <span className={`font-bold ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`}>{goal} ml</span>
+              <span className={`font-bold ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`}>{globalDefaultGoal} ml</span>
             )}
           </div>
 
@@ -2399,7 +2449,7 @@ const SettingsScreen = ({
         <Droplets size={32} className="mx-auto mb-2 opacity-80" />
         <h3 className="font-bold text-lg">SmartSip</h3>
         <p className="text-sm opacity-80">AI-Powered Hydration Coach</p>
-        <p className="text-xs opacity-60 mt-2">Version 2.0.0 • Intelligent Hydration</p>
+        <p className="text-xs opacity-60 mt-2">Version 1.8.0 • Three-Tier Goal Architecture</p>
       </div>
 
       {/* Edit/Add Amount Modal (Simplified - no icon picker) */}
@@ -2470,6 +2520,7 @@ export default function App() {
   const userContext = {
     isGuest: auth.isGuest,
     email: auth.userEmail,
+    userId: USER_ID,
   };
 
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
@@ -2520,7 +2571,7 @@ export default function App() {
                 body: JSON.stringify({
                   user_id: auth.userId,
                   logs: formattedLogs,
-                  goal: goal
+                  goal: globalDefaultGoal
                 })
               });
 
@@ -2545,7 +2596,7 @@ export default function App() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               user_id: auth.userId,
-              goal: goal
+              goal: globalDefaultGoal
             })
           });
 
@@ -2573,16 +2624,33 @@ export default function App() {
   const [aiMessage, setAiMessage] = useState("");
   const [loadingAi, setLoadingAi] = useState(false);
 
-  // Base Goal: User's profile setting (persisted)
-  const [goal, setGoal] = useState(() => {
-    const saved = localStorage.getItem('baseGoal');
-    return saved ? parseInt(saved, 10) : 2500;
+  // ============================================================================
+  // GLOBAL DEFAULT GOAL - User's baseline preference (Three-Tier Architecture)
+  // v1.8.0: Renamed from 'goal' to 'globalDefaultGoal' for clarity
+  // Tier 1: This is the user's preference, NOT the per-day snapshot goal
+  // ============================================================================
+  const [globalDefaultGoal, setGlobalDefaultGoal] = useState(() => {
+    // Migration: Check new key first, then fall back to old key for existing users
+    const newKey = localStorage.getItem('globalDefaultGoal');
+    if (newKey) return parseInt(newKey, 10);
+
+    // Migration from old localStorage key ('baseGoal')
+    const oldKey = localStorage.getItem('baseGoal');
+    if (oldKey) {
+      const migrated = parseInt(oldKey, 10);
+      // Migrate to new key immediately
+      localStorage.setItem('globalDefaultGoal', migrated.toString());
+      console.log(`[SmartSip v1.8.0] Migrated goal from 'baseGoal' to 'globalDefaultGoal': ${migrated}ml`);
+      return migrated;
+    }
+
+    return 2500; // Default for new users
   });
 
-  // Save base goal when it changes
+  // Save global default goal when it changes
   useEffect(() => {
-    localStorage.setItem('baseGoal', goal.toString());
-  }, [goal]);
+    localStorage.setItem('globalDefaultGoal', globalDefaultGoal.toString());
+  }, [globalDefaultGoal]);
 
   const [drinkAmount, setDrinkAmount] = useState(200);
   const [isBackendConnected, setIsBackendConnected] = useState(false);
@@ -2607,7 +2675,7 @@ export default function App() {
     try {
       // Default to 7 days for dashboard view
       const days = 7;
-      const response = await fetch(`${API_URL}/stats/${USER_ID}?days=${days}&goal=${goal}&client_date=${getLocalDateString()}`);
+      const response = await fetch(`${API_URL}/stats/${USER_ID}?days=${days}&goal=${globalDefaultGoal}&client_date=${getLocalDateString()}`);
       if (response.ok) {
         const data = await response.json();
         setStatsData(data);
@@ -2677,8 +2745,8 @@ export default function App() {
     }));
   }, [dailyConditions]);
 
-  // Calculate effective goal based on conditions
-  const goalData = calculateDailyTarget(goal, dailyConditions);
+  // Calculate effective goal based on conditions (Three-Tier Architecture)
+  const goalData = calculateDailyTarget(globalDefaultGoal, dailyConditions);
   const effectiveGoal = goalData.effectiveGoal;
   const goalReached = totalWater >= effectiveGoal; // Used for notification logic
 
@@ -2765,7 +2833,7 @@ export default function App() {
       if (currentTimeStr < alertStartTime || currentTimeStr > alertEndTime) return;
 
       // 2. Check Goal (Don't bug if already done)
-      if (totalWater >= goal) return;
+      if (totalWater >= globalDefaultGoal) return;
 
       // 3. Find Last Drink Time
       let lastDrinkTime = null;
@@ -2810,13 +2878,13 @@ export default function App() {
 
     const timer = setInterval(checkHydration, 60 * 1000); // Check every minute
     return () => clearInterval(timer);
-  }, [smartAlerts, alertFrequency, alertStartTime, alertEndTime, todayLogs, totalWater, goal]);
+  }, [smartAlerts, alertFrequency, alertStartTime, alertEndTime, todayLogs, totalWater, globalDefaultGoal]);
 
 
   // Trigger confetti when goal is reached (only for today, only once per day)
   useEffect(() => {
     const isToday = selectedDate === getLocalDateString();
-    const goalReached = totalWater >= goal;
+    const goalReached = totalWater >= effectiveGoal; // Use effectiveGoal for celebration trigger
     const alreadyCelebrated = celebrationShownForDate.current === selectedDate;
 
     if (isToday && goalReached && !alreadyCelebrated && totalWater > 0) {
@@ -2838,7 +2906,7 @@ export default function App() {
         });
       }, 200);
     }
-  }, [totalWater, goal, selectedDate]);
+  }, [totalWater, effectiveGoal, selectedDate]);
 
   // Streak milestone notifications
   useEffect(() => {
@@ -2902,7 +2970,7 @@ export default function App() {
     const fetchAllData = async () => {
       try {
         const [statsRes, historyRes] = await Promise.all([
-          fetch(`${API_URL}/stats/${currentUserId}?days=30&goal=${goal}&client_date=${getLocalDateString()}&${cacheBust}`, {
+          fetch(`${API_URL}/stats/${currentUserId}?days=30&goal=${globalDefaultGoal}&client_date=${getLocalDateString()}&${cacheBust}`, {
             signal: abortController.signal
           }),
           fetch(`${API_URL}/history/${currentUserId}?date=${selectedDate}&${cacheBust}`, {
@@ -2950,7 +3018,7 @@ export default function App() {
     return () => {
       abortController.abort();
     };
-  }, [auth.loading, auth.userId, selectedDate, goal]); // Re-fetch on any of these changes
+  }, [auth.loading, auth.userId, selectedDate, globalDefaultGoal]); // Re-fetch on any of these changes
 
   // ============================================================================
   // BADGE RECOVERY - Automatically unlock streak-based badges on load
@@ -2977,14 +3045,17 @@ export default function App() {
   // NEW: Sync effective goal to backend when conditions change
   // This ensures that if you raise your goal (e.g. Hot Weather), the backend
   // immediately knows. If you haven't met the new goal, your streak will drop.
+  // 
+  // v1.7.0 FIX: ONLY sync for TODAY. Past dates should NOT be auto-synced.
+  // Editing past goals is handled explicitly by handleToggleEditGoal in HomeScreen.
+  // This prevents the "God State Variable" anti-pattern where global goal leaks to all dates.
   useEffect(() => {
-    // ALLOWED FOR ALL DATES (v1.6.0) - Enables retroactive goal correction
-    // Allow syncing for today AND past dates (to fix history), but not future
     const todayStr = getLocalDateString();
-    const isViewingFuture = selectedDate > todayStr;
+    const isViewingToday = selectedDate === todayStr;
     let isMounted = true;
 
-    if (!isViewingFuture) {
+    // CRITICAL: Only sync for TODAY, never for past dates
+    if (isViewingToday) {
       const syncGoal = async () => {
         try {
           await fetch(`${API_URL}/update-goal`, {
@@ -2992,18 +3063,15 @@ export default function App() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               user_id: USER_ID,
-              date: selectedDate, // Use selectedDate to update correct history
+              date: todayStr, // Always use todayStr, never selectedDate for auto-sync
               goal: effectiveGoal
             })
           });
-          // Re-fetch history to update streak (it might drop or rise if goal changes)
-          // We only fetch history (streak is part of stats but updated by history endpoint in backend)
-          // Actually we need to refetch stats to see updated streak
+          // Refetch stats to update streak immediately in UI
           const cacheBust = `_t=${Date.now()}`;
           const currentUserId = auth.userId || 'guest-local-user';
 
-          // Refetch stats to update streak immediately in UI
-          const statsRes = await fetch(`${API_URL}/stats/${currentUserId}?days=30&goal=${goal}&client_date=${todayStr}&${cacheBust}`);
+          const statsRes = await fetch(`${API_URL}/stats/${currentUserId}?days=30&goal=${globalDefaultGoal}&client_date=${todayStr}&${cacheBust}`);
           if (statsRes.ok) {
             const statsData = await statsRes.json();
             if (isMounted) {
@@ -3020,7 +3088,7 @@ export default function App() {
       const timer = setTimeout(syncGoal, 500);
       return () => { clearTimeout(timer); isMounted = false; };
     }
-  }, [effectiveGoal, selectedDate, auth.userId, goal]);
+  }, [effectiveGoal, auth.userId, globalDefaultGoal]); // REMOVED selectedDate - this effect is TODAY-only
 
   // NEW: Dedicated Streak Fetcher
   const fetchStreak = async (userId = USER_ID) => {
@@ -3269,7 +3337,7 @@ export default function App() {
             {activeTab === 'home' && (
               <HomeScreen
                 totalWater={totalWater}
-                goal={effectiveGoal} baseGoal={goal} setGoal={setGoal} goalData={goalData}
+                goal={effectiveGoal} globalDefaultGoal={globalDefaultGoal} setGlobalDefaultGoal={setGlobalDefaultGoal} goalData={goalData}
                 drinkAmount={drinkAmount} setDrinkAmount={setDrinkAmount}
                 onAddWater={handleAddWater}
                 aiMessage={aiMessage}
@@ -3292,12 +3360,12 @@ export default function App() {
                 onCloudSync={() => setIsLoginModalOpen(true)}
               />
             )}
-            {activeTab === 'stats' && <StatsScreen logs={logs} goal={goal} effectiveGoal={effectiveGoal} isDarkMode={isDarkMode} unlockedBadges={unlockedBadges} userId={USER_ID} />}
-            {activeTab === 'alarm' && <AlarmScreen totalWater={totalWater} goal={goal} effectiveGoal={effectiveGoal} logs={logs} />}
+            {activeTab === 'stats' && <StatsScreen logs={logs} globalDefaultGoal={globalDefaultGoal} effectiveGoal={effectiveGoal} isDarkMode={isDarkMode} unlockedBadges={unlockedBadges} userId={USER_ID} />}
+            {activeTab === 'alarm' && <AlarmScreen totalWater={totalWater} globalDefaultGoal={globalDefaultGoal} effectiveGoal={effectiveGoal} logs={logs} />}
             {activeTab === 'settings' && (
               <SettingsScreen
-                goal={goal}
-                setGoal={setGoal}
+                globalDefaultGoal={globalDefaultGoal}
+                setGlobalDefaultGoal={setGlobalDefaultGoal}
                 drinkAmount={drinkAmount}
                 setDrinkAmount={setDrinkAmount}
                 userName={userName}

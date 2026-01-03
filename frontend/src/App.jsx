@@ -334,6 +334,7 @@ const HomeScreen = ({
   streak, // Accept streak prop
   onSettingsClick, // Prop to trigger navigation to Settings
   historicalGoal, // NEW: Prop for historical accuracy
+  setHistoricalGoal, // NEW: Setter for historical goal edits
   userContext, // NEW: Auth State
   onCloudSync // NEW: Trigger Auth Modal
 }) => {
@@ -3199,8 +3200,9 @@ export default function App() {
           user_id: USER_ID,
           amount,
           // CRITICAL: For today, record the effective smart goal.
-          // For backdated logs, use globalDefaultGoal to avoid polluting history with today's conditions.
-          goal: isBackdating ? globalDefaultGoal : effectiveGoal,
+          // For backdated logs, use historicalGoal (from DailySnapshot) to preserve the user's saved goal.
+          // Fall back to globalDefaultGoal only if no snapshot exists for that date.
+          goal: isBackdating ? (historicalGoal || globalDefaultGoal) : effectiveGoal,
           // ALWAYS send client's local date to prevent server UTC mismatch
           date: isBackdating ? selectedDate : getLocalDateString(),
           // For today's logs, send exact client timestamp for correct timezone display
@@ -3356,6 +3358,7 @@ export default function App() {
                 streak={streak}
                 onSettingsClick={() => setActiveTab('settings')}
                 historicalGoal={historicalGoal}
+                setHistoricalGoal={setHistoricalGoal}
                 userContext={userContext}
                 onCloudSync={() => setIsLoginModalOpen(true)}
               />

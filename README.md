@@ -4,7 +4,7 @@
 
 SmartSip helps you stay hydrated with intelligent tracking, personalized goals, and an AI coach. Built as a Progressive Web App for seamless mobile and desktop experience.
 
-![SmartSip](https://img.shields.io/badge/Version-1.4.0-blue)
+![SmartSip](https://img.shields.io/badge/Version-1.9.0-blue)
 ![PWA](https://img.shields.io/badge/PWA-Ready-purple)
 
 ---
@@ -85,8 +85,17 @@ SmartSip helps you stay hydrated with intelligent tracking, personalized goals, 
 SmartSip/
 ├── frontend/               # React/Vite frontend
 │   ├── src/
-│   │   ├── App.jsx        # Main application
+│   │   ├── App.jsx        # Main application (reduced to routing + state)
+│   │   ├── components/    # Modular UI components
+│   │   │   ├── HomeScreen.jsx
+│   │   │   ├── StatsScreen.jsx
+│   │   │   ├── SettingsScreen.jsx
+│   │   │   ├── AlarmScreen.jsx
+│   │   │   ├── BottomNav.jsx
+│   │   │   ├── LoginModal.jsx
+│   │   │   └── HydrationVisualizer.jsx
 │   │   ├── hooks/         # Custom React hooks
+│   │   ├── utils/         # Utility functions (dateUtils.js)
 │   │   ├── lib/           # Utilities (Supabase client)
 │   │   └── constants/     # Drink types, badges, etc.
 │   ├── .env.example       # Environment template
@@ -95,13 +104,10 @@ SmartSip/
 │   ├── backend.py         # API routes and logic
 │   ├── database.py        # SQLAlchemy setup
 │   ├── models.py          # Database models
-│   ├── tests/             # Backend tests
+│   ├── tests.py           # Automated backend tests
+│   ├── phase_c_cleanup.py # Data sanitization script
 │   └── .env.example       # Environment template
 ├── docs/                  # Documentation
-│   ├── architecture/      # Architectural decisions
-│   ├── setup/             # Setup and deployment guides
-│   ├── planning/          # Feature planning checklists
-│   └── reports/           # Audit reports
 ├── render.yaml            # Render deployment config
 └── README.md              # Entry point
 ```
@@ -132,6 +138,25 @@ CORS_ORIGINS=http://localhost:5173
 - [Google OAuth Setup](./docs/setup/GOOGLE_OAUTH_SETUP.md)
 - [Deployment Guide](./docs/setup/DEPLOYMENT.md)
 - [QA Checklist](./docs/planning/QA_CHECKLIST.md)
+
+---
+
+## 🧪 Testing
+
+### Backend Tests
+```bash
+cd backend
+python tests.py
+```
+
+### Data Cleanup (Admin)
+```bash
+# Dry run - shows what would be fixed
+python phase_c_cleanup.py
+
+# Live run - actually fixes corrupted data
+python phase_c_cleanup.py --live
+```
 
 ---
 

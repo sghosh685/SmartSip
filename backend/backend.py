@@ -177,13 +177,18 @@ def db_lock_previous_day_snapshot(db: Session, user_id: str, goal: int):
         # Create user if needed
         get_or_create_user(db, user_id)
         
+        # v1.9.0 FIX: Use the 'Carried Forward' goal for yesterday
+        # Do NOT use the 'goal' argument provided by 'log_intake' (which is TODAY's goal).
+        # We want yesterday to reflect the goal that was active YESTERDAY (or carried from before).
+        effective_goal = db_get_snapshot_goal(db, user_id, yesterday)
+        
         total = db_get_date_total(db, user_id, yesterday)
-        goal_met = total >= goal
+        goal_met = total >= effective_goal
         
         snapshot = models.DailySnapshot(
             user_id=user_id,
             date=yesterday,
-            goal_for_day=goal,
+            goal_for_day=effective_goal,
             total_intake=total,
             goal_met=goal_met,
             updated_at=datetime.now()
@@ -283,11 +288,15 @@ def db_backfill_snapshots(db: Session, user_id: str, goal: int):
         
         if not exists:
             get_or_create_user(db, user_id)
-            goal_met = day["total"] >= goal
+            
+            # v1.9.0 IMPR: Resolve goal for this specific date using timeline logic
+            day_goal = db_get_snapshot_goal(db, user_id, day["date"])
+            
+            goal_met = day["total"] >= day_goal
             s = models.DailySnapshot(
                 user_id=user_id,
                 date=day["date"],
-                goal_for_day=goal,
+                goal_for_day=day_goal,
                 total_intake=day["total"],
                 goal_met=goal_met,
                 updated_at=datetime.now()
@@ -556,7 +565,16 @@ def log_intake(req: LogRequest, db: Session = Depends(get_db)):
     today_logs = db_get_today_logs(db, req.user_id, logged_date)
     
     # 4. Update daily snapshot
-    db_create_or_update_snapshot(db, req.user_id, logged_date, req.goal)
+    # v1.9.0 IMPR: If goal is 0 (unspecified) or just the default 2500, try to resolve 
+    # a better "carried forward" goal from history.
+    target_goal = req.goal
+    if target_goal == 0 or target_goal == 2500:
+        resolved = db_get_snapshot_goal(db, req.user_id, logged_date)
+        # Only use resolved if it's different/better, otherwise keep what we have
+        if resolved != 2500:
+            target_goal = resolved
+            
+    db_create_or_update_snapshot(db, req.user_id, logged_date, target_goal)
     
     # 5. Ensure previous day's snapshot is locked
     db_lock_previous_day_snapshot(db, req.user_id, req.goal)
@@ -570,26 +588,27 @@ def log_intake(req: LogRequest, db: Session = Depends(get_db)):
     }
 
 def db_get_snapshot_goal(db: Session, user_id: str, date_str: str):
-    """Retrieve the locked goal for a specific date from snapshots.
+    """Retrieve the effective goal for a specific date using the Snapshot Timeline.
     
-    v1.7.0 FIX: Removed 'last known goal' fallback. If no snapshot exists,
-    return the constant global default (2500). This prevents historical edits
-    from inadvertently propagating forward to dates without explicit snapshots.
+    v1.9.0 IMPR: Implements 'Goal Carry-Forward'.
+    1. Look for an exact snapshot for the date.
+    2. If none, look for the MOST RECENT snapshot before this date.
+    3. If still none (user is new), return default (2500).
     
-    The frontend should request goal updates with the user's current preference,
-    not rely on backend guessing from historical data.
+    This ensures that if a user sets a goal on Monday, it applies to Tuesday
+    even if they haven't logged anything yet.
     """
-    # Try to find exact snapshot for this date
+    # 1. Try to find the nearest snapshot on or before the target date
+    # We order by date DESC to get the latest one first.
     snapshot = db.query(models.DailySnapshot).filter(
         models.DailySnapshot.user_id == user_id,
-        models.DailySnapshot.date == date_str
-    ).first()
+        models.DailySnapshot.date <= date_str
+    ).order_by(models.DailySnapshot.date.desc()).first()
     
     if snapshot:
         return snapshot.goal_for_day
     
-    # No snapshot exists - return constant default
-    # The frontend is the source of truth for the user's current goal preference
+    # 2. No history found at all? Return default.
     return 2500
 
 class UpdateGoalRequest(BaseModel):

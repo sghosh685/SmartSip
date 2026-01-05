@@ -42,41 +42,44 @@ models.Base.metadata.create_all(bind=engine)
 # This runs on startup to handle schema changes without Alembic
 def run_migrations():
     from sqlalchemy import text
-    with engine.connect() as conn:
-        # Add default_goal to users table
-        try:
-            conn.execute(text("ALTER TABLE users ADD COLUMN default_goal INTEGER DEFAULT 2500"))
-            conn.commit()
-            print("[Migration] Added default_goal column to users table")
-        except Exception as e:
-            if "already exists" in str(e).lower() or "duplicate" in str(e).lower():
-                pass  # Column exists, skip
-            else:
-                print(f"[Migration] default_goal: {e}")
-        
-        # Add local_date to water_intake table
-        try:
-            conn.execute(text("ALTER TABLE water_intake ADD COLUMN local_date VARCHAR(10)"))
-            conn.commit()
-            print("[Migration] Added local_date column to water_intake table")
-        except Exception as e:
-            if "already exists" in str(e).lower() or "duplicate" in str(e).lower():
-                pass  # Column exists, skip
-            else:
-                print(f"[Migration] local_date: {e}")
-        
-        # Add default_drink_amount to users table
-        try:
-            conn.execute(text("ALTER TABLE users ADD COLUMN default_drink_amount INTEGER DEFAULT 200"))
-            conn.commit()
-            print("[Migration] Added default_drink_amount column to users table")
-        except Exception as e:
-            if "already exists" in str(e).lower() or "duplicate" in str(e).lower():
-                pass  # Column exists, skip
-            else:
-                print(f"[Migration] default_drink_amount: {e}")
+    try:
+        with engine.connect() as conn:
+            # Add default_goal to users table
+            try:
+                conn.execute(text("ALTER TABLE users ADD COLUMN default_goal INTEGER DEFAULT 2500"))
+                conn.commit()
+                print("[Migration] Added default_goal column to users table")
+            except Exception as e:
+                conn.rollback()
+                if "already exists" not in str(e).lower() and "duplicate" not in str(e).lower():
+                    print(f"[Migration] default_goal: {e}")
+            
+            # Add local_date to water_intake table
+            try:
+                conn.execute(text("ALTER TABLE water_intake ADD COLUMN local_date VARCHAR(10)"))
+                conn.commit()
+                print("[Migration] Added local_date column to water_intake table")
+            except Exception as e:
+                conn.rollback()
+                if "already exists" not in str(e).lower() and "duplicate" not in str(e).lower():
+                    print(f"[Migration] local_date: {e}")
+            
+            # Add default_drink_amount to users table
+            try:
+                conn.execute(text("ALTER TABLE users ADD COLUMN default_drink_amount INTEGER DEFAULT 200"))
+                conn.commit()
+                print("[Migration] Added default_drink_amount column to users table")
+            except Exception as e:
+                conn.rollback()
+                if "already exists" not in str(e).lower() and "duplicate" not in str(e).lower():
+                    print(f"[Migration] default_drink_amount: {e}")
+    except Exception as e:
+        print(f"[Migration] WARNING - Migration failed (non-fatal): {e}")
 
-run_migrations()
+try:
+    run_migrations()
+except Exception as e:
+    print(f"[Migration] ERROR - Could not run migrations: {e}")
 
 # Helper to ensure we strictly use 'test-user' for MVP 
 # (simulating the single-user local mode until full Auth is added)

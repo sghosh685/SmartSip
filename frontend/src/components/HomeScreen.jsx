@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-    Bell, Settings, Check, Wifi, WifiOff, Edit2, Zap, Grid, X, ChevronLeft, ChevronRight, Flame, BarChart2, Droplets, Sparkles
+    Bell, Settings, Check, Wifi, WifiOff, Edit2, Zap, Grid, X, ChevronLeft, ChevronRight, Flame, BarChart2, Droplets, Sparkles, Trophy
 } from 'lucide-react';
 import HydrationVisualizer from './HydrationVisualizer';
 import { DRINK_TYPES, getAllDrinks, getCommonDrinks } from '../constants/drinkTypes';
@@ -41,6 +41,7 @@ const HomeScreen = ({
     const today = new Date();
     const todayStr = getLocalDateString(today);
     const isViewingToday = selectedDate === todayStr;
+    const [showNotifications, setShowNotifications] = useState(false); // NEW: Notification Panel State
 
     // CRITICAL (Three-Tier Goal Architecture v1.8.0):
     // - TODAY: Use effectiveGoal (globalDefaultGoal + conditions)
@@ -157,17 +158,70 @@ const HomeScreen = ({
                         )}
                     </button>
 
-                    {/* Settings Button (Moved from Bottom Nav) */}
-                    <button
-                        onClick={onSettingsClick}
-                        className={`p-3 rounded-full shadow-sm border transition-colors ${isDarkMode ? 'bg-gray-800 border-gray-700 hover:bg-gray-700' : 'bg-white border-gray-100 hover:bg-gray-50'}`}
-                    >
-                        <Settings size={22} className={isDarkMode ? 'text-gray-400' : 'text-gray-600'} />
-                    </button>
+                    <div className="relative">
+                        <button
+                            onClick={() => setShowNotifications(!showNotifications)}
+                            className={`p-3 rounded-full shadow-sm border transition-colors relative ${isDarkMode ? 'bg-gray-800 border-gray-700 hover:bg-gray-700' : 'bg-white border-gray-100 hover:bg-gray-50'}`}
+                        >
+                            <Bell size={22} className={isDarkMode ? 'text-gray-400' : 'text-gray-600'} />
+                            {/* Notification Dot if there are notifications */}
+                            <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+                        </button>
 
-                    <button className={`p-3 rounded-full shadow-sm border transition-colors ${isDarkMode ? 'bg-gray-800 border-gray-700 hover:bg-gray-700' : 'bg-white border-gray-100 hover:bg-gray-50'}`}>
-                        <Bell size={22} className={isDarkMode ? 'text-gray-400' : 'text-gray-600'} />
-                    </button>
+                        {/* Dynamic Notification Panel */}
+                        {showNotifications && (
+                            <div className={`absolute right-0 mt-2 w-72 rounded-2xl shadow-xl border z-50 p-4 ${isDarkMode ? 'bg-gray-900 border-gray-800 text-white' : 'bg-white border-gray-100 text-gray-800'}`}>
+                                <h3 className="font-bold mb-3 text-sm uppercase tracking-wider opacity-70">Notifications</h3>
+                                <div className="space-y-3">
+                                    {/* 1. Streak Notification */}
+                                    {streak > 0 ? (
+                                        <div className={`p-3 rounded-xl flex items-center gap-3 ${isDarkMode ? 'bg-orange-900/20' : 'bg-orange-50'}`}>
+                                            <div className="p-2 bg-orange-100 rounded-lg text-orange-600">
+                                                <Flame size={16} />
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-semibold">On Fire! 🔥</p>
+                                                <p className="text-xs opacity-70">You're on a {streak}-day streak. Keep it up!</p>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className={`p-3 rounded-xl flex items-center gap-3 ${isDarkMode ? 'bg-gray-800' : 'bg-gray-50'}`}>
+                                            <div className="p-2 bg-gray-200 rounded-lg text-gray-500">
+                                                <Flame size={16} />
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-semibold">Start a Streak</p>
+                                                <p className="text-xs opacity-70">Log water today to start your streak!</p>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* 2. Goal Progress Notification */}
+                                    {percentage >= 100 ? (
+                                        <div className={`p-3 rounded-xl flex items-center gap-3 ${isDarkMode ? 'bg-green-900/20' : 'bg-green-50'}`}>
+                                            <div className="p-2 bg-green-100 rounded-lg text-green-600">
+                                                <Trophy size={16} />
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-semibold">Goal Crushed! 🏆</p>
+                                                <p className="text-xs opacity-70">You hit your {displayGoal}ml goal today.</p>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className={`p-3 rounded-xl flex items-center gap-3 ${isDarkMode ? 'bg-blue-900/20' : 'bg-blue-50'}`}>
+                                            <div className="p-2 bg-blue-100 rounded-lg text-blue-600">
+                                                <Droplets size={16} />
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-semibold">Keep Drinking 💧</p>
+                                                <p className="text-xs opacity-70">{Math.round(displayGoal - totalWater)}ml left to reach your goal.</p>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 

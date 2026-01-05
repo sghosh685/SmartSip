@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import {
     MoreHorizontal, Check, Edit2, Target, Droplets,
     Sparkles, Circle, Sprout, Sun, Moon, Zap, Bell,
-    Plus, Trash2, LogOut, Info, Shield
+    Plus, Trash2, LogOut, Info, Shield, HelpCircle
 } from 'lucide-react';
 
 const SettingsScreen = ({
@@ -123,6 +123,13 @@ const SettingsScreen = ({
                                 >
                                     <Info size={16} className={isDarkMode ? 'text-blue-400' : 'text-blue-500'} />
                                     <span className="text-sm font-medium">About</span>
+                                </button>
+                                <button
+                                    onClick={() => { setShowMenu(false); alert("Need help?\n\nContact us at:\nsupport@smartsip.com\n\nOr visit our FAQ on the website."); }}
+                                    className={`w-full text-left px-4 py-3 flex items-center gap-3 transition-colors ${isDarkMode ? 'text-gray-200 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-50'}`}
+                                >
+                                    <HelpCircle size={16} className={isDarkMode ? 'text-purple-400' : 'text-purple-500'} />
+                                    <span className="text-sm font-medium">Help</span>
                                 </button>
                                 <button
                                     onClick={() => { setShowMenu(false); alert("Privacy is important.\n\nSmartSip stores your data locally on your device and securely in the cloud via encrypted sync. We do not sell your data."); }}

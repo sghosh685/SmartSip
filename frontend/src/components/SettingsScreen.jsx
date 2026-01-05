@@ -172,8 +172,8 @@ const SettingsScreen = ({
                                 <Droplets size={18} className={isDarkMode ? 'text-blue-400' : 'text-blue-600'} />
                             </div>
                             <div>
-                                <p className="text-sm font-bold text-gray-800">Glass Size</p>
-                                <p className="text-xs text-gray-500">Default drink amount</p>
+                                <p className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>Glass Size</p>
+                                <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Default drink amount</p>
                             </div>
                         </div>
                         {editingProfile ? (
@@ -182,12 +182,12 @@ const SettingsScreen = ({
                                     type="number"
                                     value={tempDrink}
                                     onChange={(e) => setTempDrink(Number(e.target.value))}
-                                    className="w-16 text-right font-bold text-blue-600 bg-transparent border-b border-blue-300 focus:outline-none"
+                                    className={`w-16 text-right font-bold bg-transparent border-b focus:outline-none ${isDarkMode ? 'text-blue-400 border-blue-700' : 'text-blue-600 border-blue-300'}`}
                                 />
-                                <span className="text-xs text-gray-500">ml</span>
+                                <span className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>ml</span>
                             </div>
                         ) : (
-                            <span className="font-bold text-blue-600">{drinkAmount} ml</span>
+                            <span className={`font-bold ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`}>{drinkAmount} ml</span>
                         )}
                     </div>
                 </div>

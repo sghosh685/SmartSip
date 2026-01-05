@@ -134,7 +134,7 @@ const SettingsScreen = ({
                                 <div className={`h-px mx-2 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}></div>
                                 <button
                                     onClick={() => {
-                                        if (confirm("Are you sure you want to reset the app? This will clear your local data and log you out.")) {
+                                        if (confirm("Are you sure you want to log out? Your history is safely saved in the cloud.")) {
                                             localStorage.clear();
                                             window.location.reload();
                                         }
@@ -142,7 +142,7 @@ const SettingsScreen = ({
                                     className={`w-full text-left px-4 py-3 flex items-center gap-3 transition-colors ${isDarkMode ? 'text-red-400 hover:bg-gray-700' : 'text-red-500 hover:bg-red-50'}`}
                                 >
                                     <LogOut size={16} />
-                                    <span className="text-sm font-medium">Reset App</span>
+                                    <span className="text-sm font-medium">Log Out</span>
                                 </button>
                             </div>
                         </>

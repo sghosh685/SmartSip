@@ -678,8 +678,12 @@ def update_goal(req: UpdateGoalRequest, db: Session = Depends(get_db)):
 @app.get("/user/{user_id}/goal")
 def get_user_goal(user_id: str, db: Session = Depends(get_db)):
     """Get user's cloud-synced default goal."""
-    user = get_or_create_user(db, user_id)
-    return {"goal": user.default_goal or 2500}
+    try:
+        user = get_or_create_user(db, user_id)
+        return {"goal": getattr(user, 'default_goal', 2500) or 2500}
+    except Exception as e:
+        print(f"[goal GET] Error: {e}")
+        return {"goal": 2500}  # Fallback
 
 class SetGoalRequest(BaseModel):
     goal: int
@@ -687,10 +691,15 @@ class SetGoalRequest(BaseModel):
 @app.put("/user/{user_id}/goal")
 def set_user_goal(user_id: str, req: SetGoalRequest, db: Session = Depends(get_db)):
     """Set user's cloud-synced default goal."""
-    user = get_or_create_user(db, user_id)
-    user.default_goal = req.goal
-    db.commit()
-    return {"status": "success", "goal": req.goal}
+    try:
+        user = get_or_create_user(db, user_id)
+        user.default_goal = req.goal
+        db.commit()
+        return {"status": "success", "goal": req.goal}
+    except Exception as e:
+        print(f"[goal PUT] Error: {e}")
+        db.rollback()
+        return {"status": "error", "message": str(e), "goal": req.goal}
 
 # --- CLOUD DRINK AMOUNT SYNC ---
 @app.get("/user/{user_id}/drink-amount")

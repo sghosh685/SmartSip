@@ -45,6 +45,7 @@ const SettingsScreen = ({
     // Presets management state
     const [showPresetsModal, setShowPresetsModal] = useState(false);
     const [editingPreset, setEditingPreset] = useState(null);
+    const [showMenu, setShowMenu] = useState(false);
 
     const [presetForm, setPresetForm] = useState({ name: '', amount: '', icon: '💧' });
 

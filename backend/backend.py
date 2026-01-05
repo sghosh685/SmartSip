@@ -52,6 +52,9 @@ def db_log_intake(db: Session, user_id: str, amount: int, date_str: str = None, 
     # Ensure User exists
     get_or_create_user(db, user_id)
     
+    # Determine the local date for grouping (timezone-safe)
+    local_date = date_str if date_str else datetime.now().strftime("%Y-%m-%d")
+    
     if client_timestamp:
         # Client sent their exact timestamp - use it directly (timezone-accurate)
         timestamp = datetime.fromisoformat(client_timestamp.replace('Z', '+00:00'))
@@ -62,7 +65,7 @@ def db_log_intake(db: Session, user_id: str, amount: int, date_str: str = None, 
         # Fallback to server time
         timestamp = datetime.now()
         
-    db_log = models.WaterIntake(user_id=user_id, intake_ml=amount, timestamp=timestamp)
+    db_log = models.WaterIntake(user_id=user_id, intake_ml=amount, timestamp=timestamp, local_date=local_date)
     db.add(db_log)
     db.commit()
     db.refresh(db_log)
@@ -111,17 +114,26 @@ def db_delete_log(db: Session, log_id: int, user_id: str):
 def db_get_today_logs(db: Session, user_id: str, date_str: str = None):
     """Get individual log entries for today (or specified date)."""
     if date_str:
-        date_start = datetime.strptime(date_str, "%Y-%m-%d")
+        target_date = date_str
     else:
-        date_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        target_date = datetime.now().strftime("%Y-%m-%d")
     
-    date_end = date_start + timedelta(days=1)
-    
+    # Try to filter by local_date first (new records)
     logs = db.query(models.WaterIntake).filter(
         models.WaterIntake.user_id == user_id,
-        models.WaterIntake.timestamp >= date_start,
-        models.WaterIntake.timestamp < date_end
+        models.WaterIntake.local_date == target_date
     ).order_by(models.WaterIntake.id.desc()).all()
+    
+    # Fallback for legacy records without local_date
+    if not logs:
+        date_start = datetime.strptime(target_date, "%Y-%m-%d")
+        date_end = date_start + timedelta(days=1)
+        logs = db.query(models.WaterIntake).filter(
+            models.WaterIntake.user_id == user_id,
+            models.WaterIntake.local_date.is_(None),
+            models.WaterIntake.timestamp >= date_start,
+            models.WaterIntake.timestamp < date_end
+        ).order_by(models.WaterIntake.id.desc()).all()
     
     return [{"id": l.id, "amount": l.intake_ml, "time": l.timestamp.isoformat()} for l in logs]
 
@@ -359,7 +371,8 @@ def db_get_stats(db: Session, user_id: str, days: int = 365, client_date: str = 
     
     daily_totals = {}
     for log in logs:
-        date_str = log.timestamp.strftime("%Y-%m-%d")
+        # Use local_date if available (new records), fall back to timestamp (legacy)
+        date_str = log.local_date if log.local_date else log.timestamp.strftime("%Y-%m-%d")
         daily_totals[date_str] = daily_totals.get(date_str, 0) + log.intake_ml
         
     result = []

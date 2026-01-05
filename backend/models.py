@@ -27,6 +27,7 @@ class WaterIntake(Base):
     intake_ml = Column(Integer)
     drink_type = Column(String, default="Water")
     timestamp = Column(DateTime, default=datetime.datetime.utcnow)
+    local_date = Column(String, index=True)  # Store user's local date for timezone-safe grouping
 
     user = relationship("User", back_populates="logs")
 

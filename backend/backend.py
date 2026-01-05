@@ -130,15 +130,30 @@ def db_get_today_total(db: Session, user_id: str):
     return total or 0
 
 def db_get_date_total(db: Session, user_id: str, date_str: str):
-    """Get total intake for a specific date."""
+    """Get total intake for a specific date (handling both local_date and legacy timestamps)."""
     date_start = datetime.strptime(date_str, "%Y-%m-%d")
     date_end = date_start + timedelta(days=1)
     
+    # Unified Query:
+    # Sum records where:
+    # 1. local_date matches the target date (New records)
+    # OR
+    # 2. local_date is NULL AND timestamp falls within the UTC day (Legacy records)
+    
+    from sqlalchemy import or_, and_
+    
     total = db.query(func.sum(models.WaterIntake.intake_ml)).filter(
         models.WaterIntake.user_id == user_id,
-        models.WaterIntake.timestamp >= date_start,
-        models.WaterIntake.timestamp < date_end
+        or_(
+            models.WaterIntake.local_date == date_str,
+            and_(
+                models.WaterIntake.local_date.is_(None),
+                models.WaterIntake.timestamp >= date_start,
+                models.WaterIntake.timestamp < date_end
+            )
+        )
     ).scalar()
+    
     return total or 0
 
 def db_delete_log(db: Session, log_id: int, user_id: str):
@@ -158,28 +173,33 @@ def db_delete_log(db: Session, log_id: int, user_id: str):
     return amount, timestamp, "success"
 
 def db_get_today_logs(db: Session, user_id: str, date_str: str = None):
-    """Get individual log entries for today (or specified date)."""
+    """Get individual log entries for today (or specified date), combining legacy and new records."""
     if date_str:
         target_date = date_str
     else:
         target_date = datetime.now().strftime("%Y-%m-%d")
     
-    # Try to filter by local_date first (new records)
+    date_start = datetime.strptime(target_date, "%Y-%m-%d")
+    date_end = date_start + timedelta(days=1)
+    
+    from sqlalchemy import or_, and_
+
+    # Unified Query: Fetch all logs that match EITHER criteria
     logs = db.query(models.WaterIntake).filter(
         models.WaterIntake.user_id == user_id,
-        models.WaterIntake.local_date == target_date
+        or_(
+            # 1. New records with explicit local_date
+            models.WaterIntake.local_date == target_date,
+            # 2. Legacy records (NULL local_date) matching timestamp range
+            and_(
+                models.WaterIntake.local_date.is_(None),
+                models.WaterIntake.timestamp >= date_start,
+                models.WaterIntake.timestamp < date_end
+            )
+        )
     ).order_by(models.WaterIntake.id.desc()).all()
     
-    # Fallback for legacy records without local_date
-    if not logs:
-        date_start = datetime.strptime(target_date, "%Y-%m-%d")
-        date_end = date_start + timedelta(days=1)
-        logs = db.query(models.WaterIntake).filter(
-            models.WaterIntake.user_id == user_id,
-            models.WaterIntake.local_date.is_(None),
-            models.WaterIntake.timestamp >= date_start,
-            models.WaterIntake.timestamp < date_end
-        ).order_by(models.WaterIntake.id.desc()).all()
+    return [{"id": l.id, "amount": l.intake_ml, "time": l.timestamp.isoformat()} for l in logs]
     
     return [{"id": l.id, "amount": l.intake_ml, "time": l.timestamp.isoformat()} for l in logs]
 

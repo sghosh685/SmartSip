@@ -14,6 +14,7 @@ class User(Base):
     email = Column(String, unique=True, index=True, nullable=True) # Nullable for Guest Mode
     is_guest = Column(Boolean, default=True)
     default_goal = Column(Integer, default=2500)  # Cloud-synced daily goal
+    default_drink_amount = Column(Integer, default=200)  # Cloud-synced glass size
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     # Relationships

@@ -61,6 +61,17 @@ def run_migrations():
                 pass  # Column exists, skip
             else:
                 print(f"[Migration] local_date: {e}")
+        
+        # Add default_drink_amount to users table
+        try:
+            conn.execute(text("ALTER TABLE users ADD COLUMN default_drink_amount INTEGER DEFAULT 200"))
+            conn.commit()
+            print("[Migration] Added default_drink_amount column to users table")
+        except Exception as e:
+            if "already exists" in str(e).lower() or "duplicate" in str(e).lower():
+                pass  # Column exists, skip
+            else:
+                print(f"[Migration] default_drink_amount: {e}")
 
 run_migrations()
 
@@ -680,6 +691,24 @@ def set_user_goal(user_id: str, req: SetGoalRequest, db: Session = Depends(get_d
     user.default_goal = req.goal
     db.commit()
     return {"status": "success", "goal": req.goal}
+
+# --- CLOUD DRINK AMOUNT SYNC ---
+@app.get("/user/{user_id}/drink-amount")
+def get_user_drink_amount(user_id: str, db: Session = Depends(get_db)):
+    """Get user's cloud-synced glass size."""
+    user = get_or_create_user(db, user_id)
+    return {"drink_amount": user.default_drink_amount or 200}
+
+class SetDrinkAmountRequest(BaseModel):
+    drink_amount: int
+
+@app.put("/user/{user_id}/drink-amount")
+def set_user_drink_amount(user_id: str, req: SetDrinkAmountRequest, db: Session = Depends(get_db)):
+    """Set user's cloud-synced glass size."""
+    user = get_or_create_user(db, user_id)
+    user.default_drink_amount = req.drink_amount
+    db.commit()
+    return {"status": "success", "drink_amount": req.drink_amount}
 
 @app.delete("/log/{log_id}")
 def delete_log(log_id: int, user_id: str, date: str = None, db: Session = Depends(get_db)):

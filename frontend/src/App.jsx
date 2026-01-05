@@ -242,7 +242,40 @@ export default function App() {
     }
   }, [USER_ID, auth.isGuest]);
 
-  const [drinkAmount, setDrinkAmount] = useState(200);
+  const [drinkAmount, setDrinkAmount] = useState(() => {
+    const saved = localStorage.getItem('drinkAmount');
+    return saved ? parseInt(saved, 10) : 200;
+  });
+
+  // Save drink amount when it changes (localStorage + cloud)
+  useEffect(() => {
+    localStorage.setItem('drinkAmount', drinkAmount.toString());
+
+    // CLOUD SYNC: Save to backend for cross-device consistency
+    if (USER_ID) {
+      fetch(`${API_URL}/user/${USER_ID}/drink-amount`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ drink_amount: drinkAmount })
+      }).catch(e => console.log('Drink amount cloud sync failed:', e));
+    }
+  }, [drinkAmount]);
+
+  // CLOUD SYNC: Fetch drink amount from cloud on app load
+  useEffect(() => {
+    if (!auth.isGuest && USER_ID) {
+      fetch(`${API_URL}/user/${USER_ID}/drink-amount`)
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+          if (data && data.drink_amount && data.drink_amount !== drinkAmount) {
+            console.log(`[SmartSip] Cloud drink amount sync: ${data.drink_amount}ml`);
+            setDrinkAmount(data.drink_amount);
+          }
+        })
+        .catch(e => console.log('Drink amount cloud fetch failed:', e));
+    }
+  }, [USER_ID, auth.isGuest]);
+
   const [isBackendConnected, setIsBackendConnected] = useState(false);
   const [streak, setStreak] = useState(0);
   const [statsData, setStatsData] = useState(null); // Lifted stats state

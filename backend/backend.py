@@ -634,6 +634,24 @@ def update_goal(req: UpdateGoalRequest, db: Session = Depends(get_db)):
     snapshot = db_create_or_update_snapshot(db, req.user_id, req.date, req.goal)
     return {"status": "success", "snapshot": snapshot}
 
+# --- CLOUD GOAL SYNC ---
+@app.get("/user/{user_id}/goal")
+def get_user_goal(user_id: str, db: Session = Depends(get_db)):
+    """Get user's cloud-synced default goal."""
+    user = get_or_create_user(db, user_id)
+    return {"goal": user.default_goal or 2500}
+
+class SetGoalRequest(BaseModel):
+    goal: int
+
+@app.put("/user/{user_id}/goal")
+def set_user_goal(user_id: str, req: SetGoalRequest, db: Session = Depends(get_db)):
+    """Set user's cloud-synced default goal."""
+    user = get_or_create_user(db, user_id)
+    user.default_goal = req.goal
+    db.commit()
+    return {"status": "success", "goal": req.goal}
+
 @app.delete("/log/{log_id}")
 def delete_log(log_id: int, user_id: str, date: str = None, db: Session = Depends(get_db)):
     amount, timestamp, result = db_delete_log(db, log_id, user_id)

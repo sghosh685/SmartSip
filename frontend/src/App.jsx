@@ -212,11 +212,35 @@ export default function App() {
     return val;
   });
 
-  // Save global default goal when it changes
+  // Save global default goal when it changes (localStorage + cloud)
   useEffect(() => {
     localStorage.setItem('globalDefaultGoal', globalDefaultGoal.toString());
     console.log(`[SmartSip] Global Default Goal saved: ${globalDefaultGoal}`);
+
+    // CLOUD SYNC: Save to backend for cross-device consistency
+    if (USER_ID) {
+      fetch(`${API_URL}/user/${USER_ID}/goal`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ goal: globalDefaultGoal })
+      }).catch(e => console.log('Goal cloud sync failed:', e));
+    }
   }, [globalDefaultGoal]);
+
+  // CLOUD SYNC: Fetch goal from cloud on app load (NOT in guest mode)
+  useEffect(() => {
+    if (!auth.isGuest && USER_ID) {
+      fetch(`${API_URL}/user/${USER_ID}/goal`)
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+          if (data && data.goal && data.goal !== globalDefaultGoal) {
+            console.log(`[SmartSip] Cloud goal sync: ${data.goal}ml`);
+            setGlobalDefaultGoal(data.goal);
+          }
+        })
+        .catch(e => console.log('Goal cloud fetch failed:', e));
+    }
+  }, [USER_ID, auth.isGuest]);
 
   const [drinkAmount, setDrinkAmount] = useState(200);
   const [isBackendConnected, setIsBackendConnected] = useState(false);

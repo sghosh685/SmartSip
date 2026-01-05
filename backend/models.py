@@ -13,6 +13,7 @@ class User(Base):
     id = Column(String, primary_key=True, default=generate_uuid)
     email = Column(String, unique=True, index=True, nullable=True) # Nullable for Guest Mode
     is_guest = Column(Boolean, default=True)
+    default_goal = Column(Integer, default=2500)  # Cloud-synced daily goal
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     # Relationships

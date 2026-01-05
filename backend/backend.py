@@ -610,38 +610,48 @@ def claim_guest_data(req: ClaimGuestDataRequest, db: Session = Depends(get_db)):
 
 @app.post("/log")
 def log_intake(req: LogRequest, db: Session = Depends(get_db)):
-    # 1. Log to DB (pass client_timestamp for timezone-accurate logging)
-    log_id, timestamp = db_log_intake(db, req.user_id, req.amount, req.date, req.client_timestamp)
-    
-    # 2. Calculate total for the logged date
-    logged_date = req.date or datetime.now().strftime("%Y-%m-%d")
-    total = db_get_date_total(db, req.user_id, logged_date)
-    
-    # 3. Get today's individual logs
-    today_logs = db_get_today_logs(db, req.user_id, logged_date)
-    
-    # 4. Update daily snapshot
-    # v1.9.0 IMPR: If goal is 0 (unspecified) or just the default 2500, try to resolve 
-    # a better "carried forward" goal from history.
-    target_goal = req.goal
-    if target_goal == 0 or target_goal == 2500:
-        resolved = db_get_snapshot_goal(db, req.user_id, logged_date)
-        # Only use resolved if it's different/better, otherwise keep what we have
-        if resolved != 2500:
-            target_goal = resolved
-            
-    db_create_or_update_snapshot(db, req.user_id, logged_date, target_goal)
-    
-    # 5. Ensure previous day's snapshot is locked
-    db_lock_previous_day_snapshot(db, req.user_id, req.goal)
-    
-    return {
-        "status": "success",
-        "total_today": total,
-        "today_logs": today_logs,
-        "log_id": log_id,
-        "logged_date": logged_date
-    }
+    try:
+        # 1. Log to DB (pass client_timestamp for timezone-accurate logging)
+        log_id, timestamp = db_log_intake(db, req.user_id, req.amount, req.date, req.client_timestamp)
+        
+        # 2. Calculate total for the logged date
+        logged_date = req.date or datetime.now().strftime("%Y-%m-%d")
+        total = db_get_date_total(db, req.user_id, logged_date)
+        
+        # 3. Get today's individual logs
+        today_logs = db_get_today_logs(db, req.user_id, logged_date)
+        
+        # 4. Update daily snapshot
+        # v1.9.0 IMPR: If goal is 0 (unspecified) or just the default 2500, try to resolve 
+        # a better "carried forward" goal from history.
+        target_goal = req.goal
+        if target_goal == 0 or target_goal == 2500:
+            resolved = db_get_snapshot_goal(db, req.user_id, logged_date)
+            # Only use resolved if it's different/better, otherwise keep what we have
+            if resolved != 2500:
+                target_goal = resolved
+                
+        db_create_or_update_snapshot(db, req.user_id, logged_date, target_goal)
+        
+        # 5. Ensure previous day's snapshot is locked
+        db_lock_previous_day_snapshot(db, req.user_id, req.goal)
+        
+        return {
+            "status": "success",
+            "total_today": total,
+            "today_logs": today_logs,
+            "log_id": log_id,
+            "logged_date": logged_date
+        }
+    except Exception as e:
+        print(f"[/log ERROR] {e}")
+        db.rollback()
+        return {
+            "status": "error",
+            "message": str(e),
+            "total_today": 0,
+            "today_logs": []
+        }
 
 def db_get_snapshot_goal(db: Session, user_id: str, date_str: str):
     """Retrieve the effective goal for a specific date using the Snapshot Timeline.

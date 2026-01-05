@@ -35,6 +35,35 @@ app.add_middleware(
 # Initialize Database (Create tables if not exist)
 models.Base.metadata.create_all(bind=engine)
 
+# --- DATABASE MIGRATION: Add new columns to existing tables ---
+# This runs on startup to handle schema changes without Alembic
+def run_migrations():
+    from sqlalchemy import text
+    with engine.connect() as conn:
+        # Add default_goal to users table
+        try:
+            conn.execute(text("ALTER TABLE users ADD COLUMN default_goal INTEGER DEFAULT 2500"))
+            conn.commit()
+            print("[Migration] Added default_goal column to users table")
+        except Exception as e:
+            if "already exists" in str(e).lower() or "duplicate" in str(e).lower():
+                pass  # Column exists, skip
+            else:
+                print(f"[Migration] default_goal: {e}")
+        
+        # Add local_date to water_intake table
+        try:
+            conn.execute(text("ALTER TABLE water_intake ADD COLUMN local_date VARCHAR(10)"))
+            conn.commit()
+            print("[Migration] Added local_date column to water_intake table")
+        except Exception as e:
+            if "already exists" in str(e).lower() or "duplicate" in str(e).lower():
+                pass  # Column exists, skip
+            else:
+                print(f"[Migration] local_date: {e}")
+
+run_migrations()
+
 # Helper to ensure we strictly use 'test-user' for MVP 
 # (simulating the single-user local mode until full Auth is added)
 DEFAULT_USER_ID = "test-user"

@@ -696,8 +696,12 @@ def set_user_goal(user_id: str, req: SetGoalRequest, db: Session = Depends(get_d
 @app.get("/user/{user_id}/drink-amount")
 def get_user_drink_amount(user_id: str, db: Session = Depends(get_db)):
     """Get user's cloud-synced glass size."""
-    user = get_or_create_user(db, user_id)
-    return {"drink_amount": user.default_drink_amount or 200}
+    try:
+        user = get_or_create_user(db, user_id)
+        return {"drink_amount": getattr(user, 'default_drink_amount', 200) or 200}
+    except Exception as e:
+        print(f"[drink-amount GET] Error: {e}")
+        return {"drink_amount": 200}  # Fallback
 
 class SetDrinkAmountRequest(BaseModel):
     drink_amount: int
@@ -705,10 +709,15 @@ class SetDrinkAmountRequest(BaseModel):
 @app.put("/user/{user_id}/drink-amount")
 def set_user_drink_amount(user_id: str, req: SetDrinkAmountRequest, db: Session = Depends(get_db)):
     """Set user's cloud-synced glass size."""
-    user = get_or_create_user(db, user_id)
-    user.default_drink_amount = req.drink_amount
-    db.commit()
-    return {"status": "success", "drink_amount": req.drink_amount}
+    try:
+        user = get_or_create_user(db, user_id)
+        user.default_drink_amount = req.drink_amount
+        db.commit()
+        return {"status": "success", "drink_amount": req.drink_amount}
+    except Exception as e:
+        print(f"[drink-amount PUT] Error: {e}")
+        db.rollback()
+        return {"status": "error", "message": str(e), "drink_amount": req.drink_amount}
 
 @app.delete("/log/{log_id}")
 def delete_log(log_id: int, user_id: str, date: str = None, db: Session = Depends(get_db)):

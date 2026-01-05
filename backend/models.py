@@ -42,3 +42,35 @@ class DailySnapshot(Base):
     updated_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     user = relationship("User", back_populates="snapshots")
+
+# --- SOCIAL CHALLENGES ---
+
+class Challenge(Base):
+    __tablename__ = "challenges"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    creator_id = Column(String, ForeignKey("users.id"))
+    name = Column(String(100))
+    goal_ml = Column(Integer, default=2500)
+    duration_days = Column(Integer, default=7)
+    start_date = Column(String)  # YYYY-MM-DD
+    end_date = Column(String)    # YYYY-MM-DD
+    invite_code = Column(String(8), unique=True, index=True)
+    status = Column(String, default='active')  # active, completed, cancelled
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    
+    # Relationships
+    creator = relationship("User", backref="created_challenges")
+    participants = relationship("ChallengeParticipant", back_populates="challenge")
+
+class ChallengeParticipant(Base):
+    __tablename__ = "challenge_participants"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    challenge_id = Column(Integer, ForeignKey("challenges.id"))
+    user_id = Column(String, ForeignKey("users.id"))
+    joined_at = Column(DateTime, default=datetime.datetime.utcnow)
+    
+    # Relationships
+    challenge = relationship("Challenge", back_populates="participants")
+    user = relationship("User", backref="challenge_memberships")

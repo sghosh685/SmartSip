@@ -744,3 +744,213 @@ def fix_dates(user_id: str, from_date: str, to_date: str, goal: int = 2500, db: 
         "from_date": from_date,
         "to_date": to_date
     }
+
+# --- SOCIAL CHALLENGES API ---
+import secrets
+
+class CreateChallengeRequest(BaseModel):
+    user_id: str
+    name: str
+    goal_ml: int = 2500
+    duration_days: int = 7
+
+class JoinChallengeRequest(BaseModel):
+    user_id: str
+
+def generate_invite_code():
+    """Generate a unique 8-character invite code."""
+    return secrets.token_urlsafe(6)[:8].upper()
+
+@app.post("/challenges")
+def create_challenge(req: CreateChallengeRequest, db: Session = Depends(get_db)):
+    """Create a new hydration challenge."""
+    get_or_create_user(db, req.user_id)
+    
+    start_date = datetime.now().strftime("%Y-%m-%d")
+    end_date = (datetime.now() + timedelta(days=req.duration_days)).strftime("%Y-%m-%d")
+    invite_code = generate_invite_code()
+    
+    # Ensure unique invite code
+    while db.query(models.Challenge).filter(models.Challenge.invite_code == invite_code).first():
+        invite_code = generate_invite_code()
+    
+    challenge = models.Challenge(
+        creator_id=req.user_id,
+        name=req.name,
+        goal_ml=req.goal_ml,
+        duration_days=req.duration_days,
+        start_date=start_date,
+        end_date=end_date,
+        invite_code=invite_code
+    )
+    db.add(challenge)
+    db.commit()
+    db.refresh(challenge)
+    
+    # Auto-add creator as participant
+    participant = models.ChallengeParticipant(
+        challenge_id=challenge.id,
+        user_id=req.user_id
+    )
+    db.add(participant)
+    db.commit()
+    
+    return {
+        "status": "success",
+        "challenge_id": challenge.id,
+        "invite_code": challenge.invite_code,
+        "name": challenge.name,
+        "start_date": start_date,
+        "end_date": end_date
+    }
+
+@app.get("/challenges/{invite_code}")
+def get_challenge(invite_code: str, db: Session = Depends(get_db)):
+    """Get challenge details by invite code."""
+    challenge = db.query(models.Challenge).filter(
+        models.Challenge.invite_code == invite_code
+    ).first()
+    
+    if not challenge:
+        raise HTTPException(status_code=404, detail="Challenge not found")
+    
+    participants = db.query(models.ChallengeParticipant).filter(
+        models.ChallengeParticipant.challenge_id == challenge.id
+    ).count()
+    
+    return {
+        "id": challenge.id,
+        "name": challenge.name,
+        "goal_ml": challenge.goal_ml,
+        "duration_days": challenge.duration_days,
+        "start_date": challenge.start_date,
+        "end_date": challenge.end_date,
+        "status": challenge.status,
+        "creator_id": challenge.creator_id,
+        "participant_count": participants,
+        "invite_code": challenge.invite_code
+    }
+
+@app.post("/challenges/{invite_code}/join")
+def join_challenge(invite_code: str, req: JoinChallengeRequest, db: Session = Depends(get_db)):
+    """Join an existing challenge."""
+    get_or_create_user(db, req.user_id)
+    
+    challenge = db.query(models.Challenge).filter(
+        models.Challenge.invite_code == invite_code
+    ).first()
+    
+    if not challenge:
+        raise HTTPException(status_code=404, detail="Challenge not found")
+    
+    if challenge.status != 'active':
+        raise HTTPException(status_code=400, detail="Challenge is no longer active")
+    
+    # Check if already a participant
+    existing = db.query(models.ChallengeParticipant).filter(
+        models.ChallengeParticipant.challenge_id == challenge.id,
+        models.ChallengeParticipant.user_id == req.user_id
+    ).first()
+    
+    if existing:
+        return {"status": "already_joined", "challenge_id": challenge.id}
+    
+    participant = models.ChallengeParticipant(
+        challenge_id=challenge.id,
+        user_id=req.user_id
+    )
+    db.add(participant)
+    db.commit()
+    
+    return {
+        "status": "success",
+        "challenge_id": challenge.id,
+        "challenge_name": challenge.name
+    }
+
+@app.get("/challenges/{challenge_id}/leaderboard")
+def get_leaderboard(challenge_id: int, db: Session = Depends(get_db)):
+    """Get leaderboard for a challenge."""
+    challenge = db.query(models.Challenge).filter(
+        models.Challenge.id == challenge_id
+    ).first()
+    
+    if not challenge:
+        raise HTTPException(status_code=404, detail="Challenge not found")
+    
+    participants = db.query(models.ChallengeParticipant).filter(
+        models.ChallengeParticipant.challenge_id == challenge_id
+    ).all()
+    
+    leaderboard = []
+    for p in participants:
+        # Calculate total intake during challenge period
+        total = db.query(func.sum(models.WaterIntake.intake_ml)).filter(
+            models.WaterIntake.user_id == p.user_id,
+            models.WaterIntake.timestamp >= datetime.strptime(challenge.start_date, "%Y-%m-%d"),
+            models.WaterIntake.timestamp < datetime.strptime(challenge.end_date, "%Y-%m-%d") + timedelta(days=1)
+        ).scalar() or 0
+        
+        # Count days where goal was met
+        days_met = 0
+        for i in range(challenge.duration_days):
+            date_str = (datetime.strptime(challenge.start_date, "%Y-%m-%d") + timedelta(days=i)).strftime("%Y-%m-%d")
+            daily_total = db_get_date_total(db, p.user_id, date_str)
+            if daily_total >= challenge.goal_ml:
+                days_met += 1
+        
+        leaderboard.append({
+            "user_id": p.user_id,
+            "total_ml": total,
+            "days_goal_met": days_met,
+            "joined_at": p.joined_at.isoformat()
+        })
+    
+    # Sort by days met (primary), then total ml (secondary)
+    leaderboard.sort(key=lambda x: (x["days_goal_met"], x["total_ml"]), reverse=True)
+    
+    # Add rank
+    for i, entry in enumerate(leaderboard):
+        entry["rank"] = i + 1
+    
+    return {
+        "challenge_id": challenge_id,
+        "challenge_name": challenge.name,
+        "status": challenge.status,
+        "start_date": challenge.start_date,
+        "end_date": challenge.end_date,
+        "goal_ml": challenge.goal_ml,
+        "leaderboard": leaderboard
+    }
+
+@app.get("/users/{user_id}/challenges")
+def get_user_challenges(user_id: str, db: Session = Depends(get_db)):
+    """Get all challenges a user is participating in."""
+    participations = db.query(models.ChallengeParticipant).filter(
+        models.ChallengeParticipant.user_id == user_id
+    ).all()
+    
+    challenges = []
+    for p in participations:
+        challenge = db.query(models.Challenge).filter(
+            models.Challenge.id == p.challenge_id
+        ).first()
+        
+        if challenge:
+            participant_count = db.query(models.ChallengeParticipant).filter(
+                models.ChallengeParticipant.challenge_id == challenge.id
+            ).count()
+            
+            challenges.append({
+                "id": challenge.id,
+                "name": challenge.name,
+                "goal_ml": challenge.goal_ml,
+                "start_date": challenge.start_date,
+                "end_date": challenge.end_date,
+                "status": challenge.status,
+                "participant_count": participant_count,
+                "invite_code": challenge.invite_code,
+                "is_creator": challenge.creator_id == user_id
+            })
+    
+    return {"challenges": challenges}

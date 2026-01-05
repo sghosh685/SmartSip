@@ -40,6 +40,8 @@ import SettingsScreen from './components/SettingsScreen';
 import LoginModal from './components/LoginModal';
 import BottomNav from './components/BottomNav';
 import AlarmScreen from './components/AlarmScreen';
+import ChallengesScreen from './components/ChallengesScreen';
+import ChallengeDetail from './components/ChallengeDetail';
 
 // --- MAIN APP COMPONENT ---
 export default function App() {
@@ -935,6 +937,24 @@ export default function App() {
                 onRequestPermission={requestPermission}
                 onTestNotification={sendTestNotification}
                 userEmail={userContext.email}
+              />
+            )}
+            {activeTab === 'challenges' && (
+              <ChallengesScreen
+                userId={USER_ID}
+                isDarkMode={isDarkMode}
+                onViewChallenge={(id) => {
+                  setActiveTab('challenge-detail');
+                  window.selectedChallengeId = id;
+                }}
+              />
+            )}
+            {activeTab === 'challenge-detail' && (
+              <ChallengeDetail
+                challengeId={window.selectedChallengeId}
+                userId={USER_ID}
+                isDarkMode={isDarkMode}
+                onBack={() => setActiveTab('challenges')}
               />
             )}
           </div>

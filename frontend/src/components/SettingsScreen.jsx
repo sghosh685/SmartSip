@@ -134,7 +134,7 @@ const SettingsScreen = ({
                                 <div className={`h-px mx-2 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}></div>
                                 <button
                                     onClick={() => {
-                                        if (confirm("Are you sure you want to log out? Your history is safely saved in the cloud.")) {
+                                        if (confirm("This will clear local data and log you out. Your history remains safe in the cloud. Continue?")) {
                                             localStorage.clear();
                                             window.location.reload();
                                         }

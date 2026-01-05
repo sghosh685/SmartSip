@@ -119,10 +119,10 @@ const SettingsScreen = ({
                                 type="text"
                                 value={tempName}
                                 onChange={(e) => setTempName(e.target.value)}
-                                className="text-lg font-bold text-gray-800 bg-transparent border-b-2 border-indigo-300 focus:outline-none w-full"
+                                className={`text-lg font-bold bg-transparent border-b-2 focus:outline-none w-full ${isDarkMode ? 'text-white border-indigo-500' : 'text-gray-800 border-indigo-300'}`}
                             />
                         ) : (
-                            <h3 className="text-lg font-bold text-gray-800">{userName}</h3>
+                            <h3 className={`text-lg font-bold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>{userName}</h3>
                         )}
                         {userEmail ? (
                             <p className="text-xs text-blue-500 font-medium">{userEmail}</p>
@@ -249,8 +249,8 @@ const SettingsScreen = ({
                             {isDarkMode ? <Moon size={18} className="text-indigo-600" /> : <Sun size={18} className="text-yellow-600" />}
                         </div>
                         <div>
-                            <p className="text-sm font-bold text-gray-800">Dark Mode</p>
-                            <p className="text-xs text-gray-500">Easier on the eyes</p>
+                            <p className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>Dark Mode</p>
+                            <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Easier on the eyes</p>
                         </div>
                     </div>
                     <button

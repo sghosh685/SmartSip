@@ -60,6 +60,27 @@ export default function App() {
 
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
 
+  // --- DEEP LINK: Handle /join/:code URLs ---
+  const [joinModalData, setJoinModalData] = useState(null);
+
+  useEffect(() => {
+    const path = window.location.pathname;
+    if (path.startsWith('/join/')) {
+      const inviteCode = path.split('/join/')[1];
+      if (inviteCode) {
+        // Fetch challenge details and show join modal
+        fetch(`${API_URL}/challenges/${inviteCode}`)
+          .then(res => res.ok ? res.json() : null)
+          .then(data => {
+            if (data) {
+              setJoinModalData({ ...data, inviteCode });
+            }
+          })
+          .catch(console.error);
+      }
+    }
+  }, []);
+
   // --- HANDLERS ---
   /* REMOVED DUPLICATE HANDLERS */
   const handleLogin = async () => {
@@ -876,6 +897,54 @@ export default function App() {
         onClose={() => setIsLoginModalOpen(false)}
         onLogin={handleLogin}
       />
+
+      {/* JOIN CHALLENGE MODAL (Deep Link) */}
+      {joinModalData && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => { setJoinModalData(null); window.history.pushState({}, '', '/'); }}></div>
+          <div className={`relative w-full max-w-sm p-6 rounded-3xl shadow-2xl ${isDarkMode ? 'bg-gray-900 text-white' : 'bg-white text-gray-800'}`}>
+            <div className="text-center">
+              <div className="w-16 h-16 bg-cyan-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Trophy size={32} className="text-cyan-600" />
+              </div>
+              <h3 className="text-xl font-bold mb-2">Join Challenge</h3>
+              <p className={`text-lg font-bold ${isDarkMode ? 'text-cyan-400' : 'text-cyan-600'}`}>
+                {joinModalData.name}
+              </p>
+              <p className={`text-sm mt-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                {joinModalData.duration_days} days • {joinModalData.goal_ml}ml daily goal
+              </p>
+              <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                {joinModalData.participant_count} participants
+              </p>
+
+              <button
+                onClick={async () => {
+                  const res = await fetch(`${API_URL}/challenges/${joinModalData.inviteCode}/join`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: USER_ID })
+                  });
+                  if (res.ok) {
+                    setJoinModalData(null);
+                    window.history.pushState({}, '', '/');
+                    setActiveTab('challenges');
+                  }
+                }}
+                className="mt-6 w-full py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold"
+              >
+                Join Challenge 🏆
+              </button>
+              <button
+                onClick={() => { setJoinModalData(null); window.history.pushState({}, '', '/'); }}
+                className={`mt-2 w-full py-3 rounded-xl font-bold ${isDarkMode ? 'bg-gray-800' : 'bg-gray-100'}`}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="min-h-screen flex justify-center">
         <div className={`w-full max-w-2xl min-h-screen overflow-hidden relative transition-colors duration-300 md:shadow-xl md:border-x ${isDarkMode ? 'bg-gray-800 md:border-gray-700' : 'bg-[#F3F6FF] md:border-gray-200'
           }`}>

@@ -402,19 +402,19 @@ const SettingsScreen = ({
                             {/* Active Hours */}
                             <div>
                                 <label className={`text-xs font-bold mb-2 block ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Active Hours</label>
-                                <div className="grid grid-cols-2 gap-3">
+                                <div className="grid grid-cols-2 gap-2">
                                     {/* Start Time */}
                                     <div
                                         onClick={() => startTimeRef.current?.showPicker()}
-                                        className={`relative p-4 rounded-xl border-2 transition-all group cursor-pointer flex items-center justify-between ${isDarkMode ? 'bg-gray-900 border-gray-700 hover:border-indigo-500' : 'bg-white border-gray-100 hover:border-indigo-300'}`}
+                                        className={`relative p-3 rounded-xl border-2 transition-all cursor-pointer overflow-hidden ${isDarkMode ? 'bg-gray-900 border-gray-700 hover:border-indigo-500' : 'bg-white border-gray-100 hover:border-indigo-300'}`}
                                     >
-                                        <div className="flex items-center gap-3">
-                                            <div className={`p-2 rounded-full ${isDarkMode ? 'bg-gray-800' : 'bg-amber-50'}`}>
-                                                <Sun size={18} className="text-amber-500" />
+                                        <div className="flex items-center gap-2">
+                                            <div className={`p-1.5 rounded-full shrink-0 ${isDarkMode ? 'bg-gray-800' : 'bg-amber-50'}`}>
+                                                <Sun size={14} className="text-amber-500" />
                                             </div>
-                                            <span className={`text-sm font-bold ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Start</span>
+                                            <span className={`text-xs font-bold truncate ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Start</span>
                                         </div>
-                                        <div className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
+                                        <div className={`text-lg font-bold mt-1 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
                                             {formatTimeForDisplay(alertStartTime)}
                                         </div>
                                         <input
@@ -429,15 +429,15 @@ const SettingsScreen = ({
                                     {/* End Time */}
                                     <div
                                         onClick={() => endTimeRef.current?.showPicker()}
-                                        className={`relative p-4 rounded-xl border-2 transition-all group cursor-pointer flex items-center justify-between ${isDarkMode ? 'bg-gray-900 border-gray-700 hover:border-indigo-500' : 'bg-white border-gray-100 hover:border-indigo-300'}`}
+                                        className={`relative p-3 rounded-xl border-2 transition-all cursor-pointer overflow-hidden ${isDarkMode ? 'bg-gray-900 border-gray-700 hover:border-indigo-500' : 'bg-white border-gray-100 hover:border-indigo-300'}`}
                                     >
-                                        <div className="flex items-center gap-3">
-                                            <div className={`p-2 rounded-full ${isDarkMode ? 'bg-gray-800' : 'bg-indigo-50'}`}>
-                                                <Moon size={18} className="text-indigo-400" />
+                                        <div className="flex items-center gap-2">
+                                            <div className={`p-1.5 rounded-full shrink-0 ${isDarkMode ? 'bg-gray-800' : 'bg-indigo-50'}`}>
+                                                <Moon size={14} className="text-indigo-400" />
                                             </div>
-                                            <span className={`text-sm font-bold ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>End</span>
+                                            <span className={`text-xs font-bold truncate ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>End</span>
                                         </div>
-                                        <div className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
+                                        <div className={`text-lg font-bold mt-1 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
                                             {formatTimeForDisplay(alertEndTime)}
                                         </div>
                                         <input
@@ -487,33 +487,33 @@ const SettingsScreen = ({
                     </button>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-3 overflow-hidden">
                     {quickAddPresets.map((preset) => (
-                        <div key={preset.id} className={`flex items-center justify-between p-4 rounded-2xl ${isDarkMode ? 'bg-gray-800' : 'bg-gray-50'}`}>
-                            <div className="flex items-center gap-3">
-                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg ${isDarkMode ? 'bg-cyan-900/30 text-cyan-400' : 'bg-cyan-100 text-cyan-600'}`}>
+                        <div key={preset.id} className={`flex items-center justify-between p-3 rounded-2xl overflow-hidden ${isDarkMode ? 'bg-gray-800' : 'bg-gray-50'}`}>
+                            <div className="flex items-center gap-2 min-w-0 flex-1">
+                                <div className={`w-10 h-10 shrink-0 rounded-xl flex items-center justify-center font-bold text-sm ${isDarkMode ? 'bg-cyan-900/30 text-cyan-400' : 'bg-cyan-100 text-cyan-600'}`}>
                                     {preset.amount}
                                 </div>
-                                <div>
-                                    <p className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>{preset.name}</p>
+                                <div className="min-w-0">
+                                    <p className={`text-sm font-bold truncate ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>{preset.name}</p>
                                     <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{preset.amount}ml</p>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-1">
+                            <div className="flex items-center shrink-0">
                                 <button
                                     onClick={() => {
                                         startEditPreset(preset);
                                         setShowPresetsModal(true);
                                     }}
-                                    className={`p-2 rounded-full ${isDarkMode ? 'hover:bg-gray-700 text-gray-400' : 'hover:bg-gray-200 text-gray-500'}`}
+                                    className={`p-1.5 rounded-full ${isDarkMode ? 'hover:bg-gray-700 text-gray-400' : 'hover:bg-gray-200 text-gray-500'}`}
                                 >
-                                    <Edit2 size={16} />
+                                    <Edit2 size={14} />
                                 </button>
                                 <button
                                     onClick={() => handleDeletePreset(preset.id)}
-                                    className={`p-2 rounded-full ${isDarkMode ? 'hover:bg-red-900/30 text-red-400' : 'hover:bg-red-50 text-red-500'}`}
+                                    className={`p-1.5 rounded-full ${isDarkMode ? 'hover:bg-red-900/30 text-red-400' : 'hover:bg-red-50 text-red-500'}`}
                                 >
-                                    <Trash2 size={16} />
+                                    <Trash2 size={14} />
                                 </button>
                             </div>
                         </div>

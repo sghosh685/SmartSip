@@ -392,12 +392,12 @@ const HomeScreen = ({
 
                     {/* PREMIUM DRINK MODAL */}
                     {showDrinkModal && (
-                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+                        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 pb-24 sm:pb-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
                             <div
-                                className={`w-full max-w-md rounded-3xl p-6 shadow-2xl border ${isDarkMode
+                                className={`w-full max-w-md max-h-[70vh] overflow-y-auto rounded-3xl p-6 shadow-2xl border ${isDarkMode
                                     ? 'bg-gray-900/95 border-gray-700'
                                     : 'bg-white/95 border-gray-100'
-                                    } backdrop-blur-xl animate-in zoom-in-95 duration-200`}
+                                    } backdrop-blur-xl animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200`}
                             >
                                 {/* Modal Header */}
                                 <div className="flex justify-between items-center mb-6">

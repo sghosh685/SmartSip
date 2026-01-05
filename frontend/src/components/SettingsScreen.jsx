@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import {
     MoreHorizontal, Check, Edit2, Target, Droplets,
     Sparkles, Circle, Sprout, Sun, Moon, Zap, Bell,
-    Plus, Trash2
+    Plus, Trash2, LogOut, Info, Shield
 } from 'lucide-react';
 
 const SettingsScreen = ({
@@ -100,11 +100,53 @@ const SettingsScreen = ({
     return (
         <div className="px-6 pb-32 pt-6 animate-in fade-in duration-500">
             {/* Header */}
-            <div className="flex justify-between items-center mb-6">
+            {/* Header */}
+            <div className="flex justify-between items-center mb-6 relative z-50">
                 <h2 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>Settings</h2>
-                <button className={`p-2 rounded-full shadow-sm border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'}`}>
-                    <MoreHorizontal size={20} className={isDarkMode ? 'text-gray-400' : 'text-gray-600'} />
-                </button>
+                <div className="relative">
+                    <button
+                        onClick={() => setShowMenu(!showMenu)}
+                        className={`p-2 rounded-full shadow-sm border transition-colors ${isDarkMode ? 'bg-gray-800 border-gray-700 hover:bg-gray-700' : 'bg-white border-gray-100 hover:bg-gray-50'}`}
+                    >
+                        <MoreHorizontal size={20} className={isDarkMode ? 'text-gray-400' : 'text-gray-600'} />
+                    </button>
+
+                    {/* Dropdown Menu */}
+                    {showMenu && (
+                        <>
+                            <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} />
+                            <div className={`absolute right-0 top-12 w-48 rounded-2xl shadow-xl border z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200 ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'}`}>
+                                <button
+                                    onClick={() => { setShowMenu(false); alert("SmartSip v1.8.0\n\nThe hydration companion that keeps you refreshed!\n\nDeveloped with ❤️"); }}
+                                    className={`w-full text-left px-4 py-3 flex items-center gap-3 transition-colors ${isDarkMode ? 'text-gray-200 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-50'}`}
+                                >
+                                    <Info size={16} className={isDarkMode ? 'text-blue-400' : 'text-blue-500'} />
+                                    <span className="text-sm font-medium">About</span>
+                                </button>
+                                <button
+                                    onClick={() => { setShowMenu(false); alert("Privacy is important.\n\nSmartSip stores your data locally on your device and securely in the cloud via encrypted sync. We do not sell your data."); }}
+                                    className={`w-full text-left px-4 py-3 flex items-center gap-3 transition-colors ${isDarkMode ? 'text-gray-200 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-50'}`}
+                                >
+                                    <Shield size={16} className={isDarkMode ? 'text-green-400' : 'text-green-500'} />
+                                    <span className="text-sm font-medium">Privacy</span>
+                                </button>
+                                <div className={`h-px mx-2 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}></div>
+                                <button
+                                    onClick={() => {
+                                        if (confirm("Are you sure you want to reset the app? This will clear your local data and log you out.")) {
+                                            localStorage.clear();
+                                            window.location.reload();
+                                        }
+                                    }}
+                                    className={`w-full text-left px-4 py-3 flex items-center gap-3 transition-colors ${isDarkMode ? 'text-red-400 hover:bg-gray-700' : 'text-red-500 hover:bg-red-50'}`}
+                                >
+                                    <LogOut size={16} />
+                                    <span className="text-sm font-medium">Reset App</span>
+                                </button>
+                            </div>
+                        </>
+                    )}
+                </div>
             </div>
 
             {/* Profile Card */}

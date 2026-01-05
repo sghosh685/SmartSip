@@ -19,6 +19,6 @@ services:
       - key: GROQ_API_KEY
         sync: false
       - key: CORS_ORIGINS
-        value: "https://smartsip.vercel.app"  # Update with your actual Vercel URL
+        value: "https://smartsip-water-tracker.vercel.app,https://smartsip.vercel.app"  # Both possible domains
     healthCheckPath: /
     autoDeploy: true  # Auto-deploy on git push

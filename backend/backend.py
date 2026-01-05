@@ -21,8 +21,11 @@ app = FastAPI(title="SmartSip API")
 # CORS Configuration
 # In production, set CORS_ORIGINS to your frontend domain(s)
 # Example: CORS_ORIGINS=https://smartsip.vercel.app,https://smartsip.com
-cors_origins_str = os.getenv("CORS_ORIGINS", "*")
-cors_origins = cors_origins_str.split(",") if cors_origins_str != "*" else ["*"]
+cors_origins_str = os.getenv("CORS_ORIGINS", "https://smartsip-water-tracker.vercel.app,https://smartsip.vercel.app")
+# Always include both domains even if env var is set incorrectly
+cors_origins = [origin.strip() for origin in cors_origins_str.split(",")]
+if "https://smartsip-water-tracker.vercel.app" not in cors_origins:
+    cors_origins.append("https://smartsip-water-tracker.vercel.app")
 
 app.add_middleware(
     CORSMiddleware,

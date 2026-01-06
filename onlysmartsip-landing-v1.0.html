@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OnlySmartSip | Your Complete Health Operating System</title>
+    <meta name="description"
+        content="Track health, correct habits, optimize life. The unified platform for hydration, movement, productivity, and AI-driven insights.">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, #3B82F6, #8B5CF6, #EC4899);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero-gradient {
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
+        }
+
+        .card-hover:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 40px rgba(59, 130, 246, 0.15);
+        }
+
+        .glow {
+            box-shadow: 0 0 60px rgba(139, 92, 246, 0.2);
+        }
+    </style>
+</head>
+
+<body class="bg-slate-950 text-white antialiased">
+
+    <!-- Navigation -->
+    <nav class="fixed top-0 left-0 right-0 z-50 bg-slate-950/80 backdrop-blur-lg border-b border-slate-800">
+        <div class="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <span class="text-2xl">💧</span>
+                <span class="font-bold text-lg">OnlySmartSip</span>
+            </div>
+            <div class="hidden md:flex items-center gap-8 text-sm text-slate-400">
+                <a href="#features" class="hover:text-white transition">Features</a>
+                <a href="#modules" class="hover:text-white transition">Modules</a>
+                <a href="#pricing" class="hover:text-white transition">Pricing</a>
+                <a href="course.html" class="hover:text-white transition">Course</a>
+            </div>
+            <a href="#signup"
+                class="bg-gradient-to-r from-blue-600 to-purple-600 text-white font-medium py-2 px-5 rounded-lg text-sm hover:opacity-90 transition">
+                Get Early Access
+            </a>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section
+        class="hero-gradient min-h-screen flex items-center justify-center px-6 pt-24 pb-16 relative overflow-hidden">
+        <div class="absolute top-40 left-20 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl"></div>
+        <div class="absolute bottom-20 right-20 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl"></div>
+
+        <div class="max-w-4xl mx-auto text-center relative z-10">
+            <div
+                class="inline-flex items-center gap-2 bg-purple-500/10 border border-purple-500/20 rounded-full px-4 py-2 mb-8">
+                <span class="w-2 h-2 bg-purple-400 rounded-full animate-pulse"></span>
+                <span class="text-sm text-purple-300">AI-Powered Self-Improvement Platform</span>
+            </div>
+
+            <h1 class="text-4xl md:text-6xl lg:text-7xl font-extrabold leading-tight mb-6">
+                Your Complete<br><span class="gradient-text">Health Operating System</span>
+            </h1>
+
+            <p class="text-xl md:text-2xl text-slate-400 mb-4">
+                Stop juggling 10 apps for 10 things.
+            </p>
+            <p class="text-lg text-slate-500 max-w-2xl mx-auto mb-10">
+                Track health, correct habits, optimize productivity — all in one unified platform powered by AI
+                insights.
+            </p>
+
+            <div class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
+                <a href="#signup"
+                    class="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-semibold py-4 px-8 rounded-xl transition-all transform hover:scale-105 shadow-lg shadow-purple-500/25">
+                    Join the Waitlist
+                </a>
+                <a href="#modules"
+                    class="w-full sm:w-auto border border-slate-600 hover:border-slate-500 text-slate-300 font-medium py-4 px-8 rounded-xl transition-all">
+                    Explore Features
+                </a>
+            </div>
+
+            <!-- Stats -->
+            <div class="flex flex-wrap justify-center gap-8 text-center">
+                <div>
+                    <div class="text-3xl font-bold text-white">500+</div>
+                    <div class="text-sm text-slate-500">Early Adopters</div>
+                </div>
+                <div>
+                    <div class="text-3xl font-bold text-white">4</div>
+                    <div class="text-sm text-slate-500">Core Modules</div>
+                </div>
+                <div>
+                    <div class="text-3xl font-bold text-white">∞</div>
+                    <div class="text-sm text-slate-500">AI Insights</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Problem Section -->
+    <section class="py-24 px-6 bg-slate-900">
+        <div class="max-w-5xl mx-auto">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl md:text-4xl font-bold mb-4">The Problem With "Wellness"</h2>
+                <p class="text-slate-400 max-w-2xl mx-auto">Your health data is fragmented. Your insights are generic.
+                    Your progress is invisible.</p>
+            </div>
+
+            <div class="grid md:grid-cols-3 gap-6">
+                <div class="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-6 card-hover transition-all">
+                    <div class="text-4xl mb-4">📱</div>
+                    <h3 class="text-xl font-semibold mb-2">10 Apps, Zero Connection</h3>
+                    <p class="text-slate-400">Water tracker here. Sleep app there. Workout log somewhere else. None of
+                        them talk to each other.</p>
+                </div>
+                <div class="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-6 card-hover transition-all">
+                    <div class="text-4xl mb-4">🤖</div>
+                    <h3 class="text-xl font-semibold mb-2">Generic "Insights"</h3>
+                    <p class="text-slate-400">"Drink more water" isn't an insight. You need correlations between YOUR
+                        sleep, movement, and productivity.</p>
+                </div>
+                <div class="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-6 card-hover transition-all">
+                    <div class="text-4xl mb-4">🎯</div>
+                    <h3 class="text-xl font-semibold mb-2">No Habit Correction</h3>
+                    <p class="text-slate-400">Most apps track. None of them help you unlearn bad habits engineered by
+                        billion-dollar industries.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Solution Section -->
+    <section id="features" class="py-24 px-6 bg-slate-950">
+        <div class="max-w-5xl mx-auto">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl md:text-4xl font-bold mb-4">One Platform. Complete Control.</h2>
+                <p class="text-slate-400 max-w-2xl mx-auto">OnlySmartSip unifies your health, habits, and productivity
+                    into one intelligent system.</p>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-8">
+                <div
+                    class="bg-gradient-to-br from-blue-900/30 to-slate-900 border border-blue-800/30 rounded-3xl p-8 glow">
+                    <div class="w-14 h-14 bg-blue-500/20 rounded-2xl flex items-center justify-center mb-6 text-3xl">💧
+                    </div>
+                    <h3 class="text-2xl font-bold mb-3">Unified Data</h3>
+                    <p class="text-slate-400 mb-4">Hydration, sleep, movement, food, tasks — all in one place. Finally.
+                    </p>
+                    <ul class="space-y-2 text-sm text-slate-300">
+                        <li class="flex items-center gap-2"><span class="text-green-400">✓</span> Cross-metric
+                            correlations</li>
+                        <li class="flex items-center gap-2"><span class="text-green-400">✓</span> Historical patterns
+                        </li>
+                        <li class="flex items-center gap-2"><span class="text-green-400">✓</span> Predictive insights
+                        </li>
+                    </ul>
+                </div>
+                <div
+                    class="bg-gradient-to-br from-purple-900/30 to-slate-900 border border-purple-800/30 rounded-3xl p-8 glow">
+                    <div class="w-14 h-14 bg-purple-500/20 rounded-2xl flex items-center justify-center mb-6 text-3xl">
+                        🧠</div>
+                    <h3 class="text-2xl font-bold mb-3">AI That Learns You</h3>
+                    <p class="text-slate-400 mb-4">Not generic tips. Real insights based on YOUR data and behavior
+                        patterns.</p>
+                    <ul class="space-y-2 text-sm text-slate-300">
+                        <li class="flex items-center gap-2"><span class="text-green-400">✓</span> "You're 40% more
+                            productive after walks"</li>
+                        <li class="flex items-center gap-2"><span class="text-green-400">✓</span> "Low water = skipped
+                            workouts"</li>
+                        <li class="flex items-center gap-2"><span class="text-green-400">✓</span> Personalized
+                            recommendations</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Modules Section -->
+    <section id="modules" class="py-24 px-6 bg-slate-900">
+        <div class="max-w-5xl mx-auto">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl md:text-4xl font-bold mb-4">Four Pillars of Self-Improvement</h2>
+                <p class="text-slate-400 max-w-2xl mx-auto">Everything you need to track your life and understand
+                    yourself.</p>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-6">
+                <!-- Health Module -->
+                <div class="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-6">
+                    <div class="flex items-center gap-4 mb-4">
+                        <div class="w-12 h-12 bg-blue-500/20 rounded-xl flex items-center justify-center text-2xl">💧
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-bold">Health & Wellness</h3>
+                            <p class="text-sm text-slate-400">Physical foundations</p>
+                        </div>
+                    </div>
+                    <ul class="space-y-2 text-sm text-slate-300">
+                        <li>• Hydration Tracker</li>
+                        <li>• Food & Nutrition Logger</li>
+                        <li>• Sleep Analytics</li>
+                        <li>• Blood OS (Bio-age tracking)</li>
+                    </ul>
+                </div>
+
+                <!-- Habit Module -->
+                <div class="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-6">
+                    <div class="flex items-center gap-4 mb-4">
+                        <div class="w-12 h-12 bg-red-500/20 rounded-xl flex items-center justify-center text-2xl">🎯
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-bold">Habit Correction</h3>
+                            <p class="text-sm text-slate-400">Behavioral reprogramming</p>
+                        </div>
+                    </div>
+                    <ul class="space-y-2 text-sm text-slate-300">
+                        <li>• Industry Deprogramming</li>
+                        <li>• Sugar Craving Elimination</li>
+                        <li>• <a href="course.html" class="text-blue-400 hover:underline">Health OS Course →</a></li>
+                    </ul>
+                </div>
+
+                <!-- Momentum Module -->
+                <div class="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-6">
+                    <div class="flex items-center gap-4 mb-4">
+                        <div class="w-12 h-12 bg-green-500/20 rounded-xl flex items-center justify-center text-2xl">🏃
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-bold">Momentum</h3>
+                            <p class="text-sm text-slate-400">Physical activity</p>
+                        </div>
+                    </div>
+                    <ul class="space-y-2 text-sm text-slate-300">
+                        <li>• 20-Minute Workout Logs</li>
+                        <li>• Walk & Step Tracking</li>
+                        <li>• Movement Analytics</li>
+                    </ul>
+                </div>
+
+                <!-- Personal Management Module -->
+                <div class="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-6">
+                    <div class="flex items-center gap-4 mb-4">
+                        <div class="w-12 h-12 bg-purple-500/20 rounded-xl flex items-center justify-center text-2xl">🧘
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-bold">Personal Management</h3>
+                            <p class="text-sm text-slate-400">Mind & productivity</p>
+                        </div>
+                    </div>
+                    <ul class="space-y-2 text-sm text-slate-300">
+                        <li>• Tasks & Goals</li>
+                        <li>• Journal & Manifestation</li>
+                        <li>• Pomodoro Timer</li>
+                        <li>• Mind & Anger Management</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pricing Section -->
+    <section id="pricing" class="py-24 px-6 bg-slate-950">
+        <div class="max-w-4xl mx-auto">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl md:text-4xl font-bold mb-4">Simple Pricing</h2>
+                <p class="text-slate-400">Start free. Upgrade when you're ready.</p>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-8">
+                <!-- Free Tier -->
+                <div class="bg-slate-800/50 border border-slate-700/50 rounded-3xl p-8">
+                    <div class="text-sm text-slate-400 mb-2">Free Forever</div>
+                    <div class="text-4xl font-bold mb-6">$0<span class="text-lg text-slate-400">/mo</span></div>
+                    <ul class="space-y-3 text-slate-300 mb-8">
+                        <li class="flex items-center gap-3"><span class="text-green-400">✓</span> Hydration tracking
+                        </li>
+                        <li class="flex items-center gap-3"><span class="text-green-400">✓</span> Basic habit logging
+                        </li>
+                        <li class="flex items-center gap-3"><span class="text-green-400">✓</span> 7-day history</li>
+                        <li class="flex items-center gap-3"><span class="text-green-400">✓</span> Community access</li>
+                    </ul>
+                    <a href="#signup"
+                        class="block w-full text-center border border-slate-600 hover:border-slate-500 py-3 rounded-xl transition">
+                        Get Started
+                    </a>
+                </div>
+
+                <!-- Pro Tier -->
+                <div
+                    class="bg-gradient-to-br from-purple-900/40 to-slate-900 border border-purple-700/50 rounded-3xl p-8 relative">
+                    <div class="absolute -top-3 right-6 bg-purple-600 text-xs font-bold px-3 py-1 rounded-full">POPULAR
+                    </div>
+                    <div class="text-sm text-purple-300 mb-2">Pro</div>
+                    <div class="text-4xl font-bold mb-6">$9.99<span class="text-lg text-slate-400">/mo</span></div>
+                    <ul class="space-y-3 text-slate-300 mb-8">
+                        <li class="flex items-center gap-3"><span class="text-green-400">✓</span> Everything in Free
+                        </li>
+                        <li class="flex items-center gap-3"><span class="text-green-400">✓</span> All 4 modules unlocked
+                        </li>
+                        <li class="flex items-center gap-3"><span class="text-green-400">✓</span> Unlimited history</li>
+                        <li class="flex items-center gap-3"><span class="text-green-400">✓</span> AI-powered insights
+                        </li>
+                        <li class="flex items-center gap-3"><span class="text-green-400">✓</span> Health OS Course
+                            included</li>
+                    </ul>
+                    <a href="#signup"
+                        class="block w-full text-center bg-gradient-to-r from-blue-600 to-purple-600 py-3 rounded-xl font-semibold hover:opacity-90 transition">
+                        Join Waitlist (50% off)
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Signup Section -->
+    <section id="signup" class="py-24 px-6 bg-slate-900">
+        <div class="max-w-xl mx-auto text-center">
+            <div
+                class="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-3xl p-8 md:p-12 glow">
+                <div class="text-5xl mb-6">🚀</div>
+                <h2 class="text-2xl md:text-3xl font-bold mb-4">Be an Early Adopter</h2>
+                <p class="text-slate-400 mb-8">Get 50% off when we launch. Plus exclusive access to the Health OS
+                    course.</p>
+
+                <form action="https://formspree.io/f/YOUR_FORM_ID" method="POST" class="space-y-4">
+                    <input type="email" name="email" placeholder="Enter your email" required
+                        class="w-full bg-slate-700/50 border border-slate-600 rounded-xl px-5 py-4 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500">
+                    <button type="submit"
+                        class="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-semibold py-4 px-8 rounded-xl transition-all transform hover:scale-105">
+                        Join the Waitlist
+                    </button>
+                </form>
+
+                <p class="text-xs text-slate-500 mt-6">No spam. Unsubscribe anytime.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="py-12 px-6 border-t border-slate-800">
+        <div class="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+            <div class="flex items-center gap-2">
+                <span class="text-xl">💧</span>
+                <span class="font-bold">OnlySmartSip</span>
+            </div>
+            <div class="flex items-center gap-6 text-sm text-slate-500">
+                <a href="course.html" class="hover:text-white transition">Health OS Course</a>
+                <a href="#" class="hover:text-white transition">Privacy</a>
+                <a href="#" class="hover:text-white transition">Terms</a>
+            </div>
+            <p class="text-sm text-slate-500">© 2026 OnlySmartSip. All rights reserved.</p>
+        </div>
+    </footer>
+
+</body>
+
+</html>
